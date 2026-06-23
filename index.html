@@ -66,6 +66,7 @@
     const Award = (p) => <Icon {...p}>
       <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></Icon>;
     const ChevronDown = (p) => <Icon {...p}><path d="m6 9 6 6 6-6"/></Icon>;
+    const Check = (p) => <Icon {...p}><path d="M20 6 9 17l-5-5"/></Icon>;
     const Database = (p) => <Icon {...p}>
       <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/>
       <path d="M3 12A9 3 0 0 0 21 12"/></Icon>;
@@ -167,15 +168,15 @@
         { id: 'payer-c', from: 'Payer', to: 'C', label: 'Coverage',   d: 'M 510 430 C 640 440, 730 410, 750 320', mx: 690, my: 408 },
       ],
       datasets: {
-        xponent:  { id: 'xponent',  name: 'Xponent',  type: 'prescription', edges: ['p-pat', 'c-pat'] },
-        plantrak: { id: 'plantrak', name: 'PlanTrak', type: 'prescription', edges: ['p-pat', 'c-pat'] },
-        npa:      { id: 'npa',      name: 'NPA',      type: 'prescription', edges: ['p-pat', 'c-pat'] },
+        xponent:  { id: 'xponent',  name: 'Xponent',  type: 'prescription', edges: ['p-pat'] },
+        plantrak: { id: 'plantrak', name: 'PlanTrak', type: 'prescription', edges: ['p-pat', 'p-payer'] },
+        npa:      { id: 'npa',      name: 'NPA',      type: 'prescription', edges: ['p-pat'] },
         ddd:      { id: 'ddd',      name: 'DDD',      type: 'sales', edges: ['m-p', 'm-c', 'w-p', 'w-c'], missed: ['m-w', 'w-w'] },
         nsp:      { id: 'nsp',      name: 'NSP',      type: 'sales', edges: ['m-w', 'm-p', 'm-c', 'w-p', 'w-c'] },
         lrx:      { id: 'lrx',      name: 'LRx',      type: 'claims', edges: ['p-pat', 'p-payer'] },
         dx:       { id: 'dx',       name: 'Dx',       type: 'claims', edges: ['c-pat', 'c-payer'] },
         apld:     { id: 'apld',     name: 'APLD',     type: 'claims', edges: ['p-pat', 'c-pat', 'p-payer', 'c-payer', 'pat-payer'] },
-        mmit:     { id: 'mmit',     name: 'MMIT',     type: 'payer', edges: ['payer-p', 'payer-c', 'pat-payer'] },
+        mmit:     { id: 'mmit',     name: 'MMIT',     type: 'payer', edges: ['payer-p', 'payer-c'] },
         formulary:{ id: 'formulary',name: 'Formulary',type: 'payer', edges: ['payer-p'] },
       },
       btnGroups: [
@@ -222,7 +223,6 @@
         HCO:  { id: 'HCO',  label: 'Account / IDN',    x: 850, y: 110, icon: Building,     color: 'text-amber-600',   border: 'border-amber-300' },
         Terr: { id: 'Terr', label: 'Territory',        x: 300, y: 420, icon: MapIcon,      color: 'text-orange-600',  border: 'border-orange-300' },
         MSL:  { id: 'MSL',  label: 'MSL / Medical',    x: 120, y: 400, icon: Microscope,   color: 'text-cyan-600',    border: 'border-cyan-300' },
-        Pat:  { id: 'Pat',  label: 'Patient',          x: 870, y: 330, icon: Users,        color: 'text-slate-600',   border: 'border-slate-300' },
       },
       edges: [
         { id: 'rep-call',   from: 'Rep', to: 'HCP',  label: 'Detail',      d: 'M 120 200 Q 300 105 500 150', mx: 300, my: 118 },
@@ -235,7 +235,6 @@
         { id: 'hco-terr',   from: 'HCO', to: 'Terr', label: 'Aligned',     d: 'M 850 110 Q 580 380 300 420', mx: 575, my: 332 },
         { id: 'hcp-hco',    from: 'HCP', to: 'HCO',  label: 'Affiliation', d: 'M 500 150 L 850 110',          mx: 675, my: 122 },
         { id: 'hco-hco',    from: 'HCO', to: 'HCO',  label: 'IDN',         d: 'M 830 100 C 800 15, 900 15, 870 100', mx: 850, my: 42, selfLoop: true },
-        { id: 'pat-hcp',    from: 'Pat', to: 'HCP',  label: 'Seen by',     d: 'M 870 330 Q 660 210 500 150', mx: 685, my: 240 },
       ],
       datasets: {
         calls:     { id: 'calls',     name: 'Calls',        type: 'field',       edges: ['rep-call'] },
@@ -244,8 +243,8 @@
         speaker:   { id: 'speaker',   name: 'Speaker',      type: 'field',       edges: ['rep-event'] },
         msl:       { id: 'msl',       name: 'MSL',          type: 'medical',     edges: ['msl-hcp'] },
         terrAlign: { id: 'terrAlign', name: 'Alignment',    type: 'alignment',   edges: ['rep-terr', 'hcp-terr', 'hco-terr'] },
-        targeting: { id: 'targeting', name: 'Targeting',    type: 'alignment',   edges: ['hcp-terr', 'rep-call'] },
-        affil:     { id: 'affil',     name: 'Affiliation',  type: 'affiliation', edges: ['hcp-hco', 'pat-hcp'] },
+        targeting: { id: 'targeting', name: 'Targeting',    type: 'alignment',   edges: ['hcp-terr'] },
+        affil:     { id: 'affil',     name: 'Affiliation',  type: 'affiliation', edges: ['hcp-hco'] },
         idn:       { id: 'idn',       name: 'IDN Hierarchy',type: 'affiliation', edges: ['hco-hco', 'hcp-hco'] },
       },
       btnGroups: [
@@ -402,7 +401,7 @@
       branches: [
         { accent: 'amber', title: 'Direct EDI Channel', tag: 'Trade', sub: 'Wholesaler → manufacturer EDI feeds',
           chips: ['852 Inventory', '867 Resale', '844 Chargeback'],
-          desc: '<b>852</b> &mdash; on-hand inventory & warehouse withdrawals (incl. <b>M2W / W2W</b> that DDD misses). <b>867</b> &mdash; indirect <u>resale</u> out of the wholesaler to pharmacies / clinics, the raw source DDD is built from. <b>844</b> &mdash; the <b>chargeback</b> claim for the price difference on a contracted sale.',
+          desc: '<b>852</b> &mdash; on-hand inventory & product activity, incl. the <b>M2W / W2W</b> receipts & transfers that DDD misses. <b>867</b> &mdash; indirect <u>resale</u> out of the wholesaler to pharmacies / clinics, the raw source DDD is built from. <b>844</b> &mdash; the <b>chargeback</b> claim for the price difference on a contracted sale.',
           note: { tone: 'orange', items: ['Direct from distributors under a DSA / fee-for-service.', 'Own product only &mdash; no market view.', 'Raw, account-level & fast (often daily).'] } },
         { accent: 'violet', title: 'Vendor Aggregated', tag: 'Secondary', sub: 'The processed product built from 867',
           chips: ['DDD', 'NSP'],
@@ -533,6 +532,10 @@
                     const labelStroke = s.def ? '#cbd5e1' : s.color;
                     const labelFill = s.def ? '#64748b' : s.color;
                     const arrow = (s.show && !s.missed) ? `url(#${markerId(s.color)})` : '';
+                    // Neutral (nothing selected) → compact badge; highlighted → full size.
+                    const lbl = s.def
+                      ? { w: 56, h: 18, rx: 9,  fs: 9,  y: 3 }
+                      : { w: 72, h: 24, rx: 12, fs: 11, y: 4 };
 
                     return (
                       <g key={edge.id}>
@@ -551,9 +554,10 @@
                             </g>
                           ) : (
                             <React.Fragment>
-                              <rect x="-36" y="-12" width="72" height="24" rx="12" fill="white"
-                                stroke={labelStroke} strokeWidth="1" />
-                              <text x="0" y="4" textAnchor="middle" fontSize="11" fontWeight="600"
+                              <rect x={-lbl.w / 2} y={-lbl.h / 2} width={lbl.w} height={lbl.h} rx={lbl.rx} fill="white"
+                                stroke={labelStroke} strokeWidth="1"
+                                className="transition-all duration-300 ease-in-out" />
+                              <text x="0" y={lbl.y} textAnchor="middle" fontSize={lbl.fs} fontWeight="600"
                                 fill={labelFill}>{edge.label}</text>
                             </React.Fragment>
                           )}
@@ -613,10 +617,10 @@
                               onClick={() => setPinned(prev => prev === id ? null : id)}
                               onMouseEnter={() => setHovered(id)}
                               onMouseLeave={() => setHovered(null)}
-                              className={`px-5 py-2.5 rounded-full font-semibold transition-all duration-200 border-2 shadow-sm
-                                ${on ? cls.on + ' shadow-md -translate-y-1' : cls.off + ' hover:shadow-sm'}
-                                ${isPinned ? 'ring-2 ring-offset-1 ' + cls.ring : ''}`}>
-                              {isPinned ? '\u{1F4CC} ' : ''}{def.datasets[id].name}
+                              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border-2 transition-colors duration-150
+                                ${on ? cls.on : cls.off}`}>
+                              {isPinned && <Check size={15} className="-ml-0.5 shrink-0" />}
+                              {def.datasets[id].name}
                             </button>
                           );
                         })}
@@ -679,7 +683,7 @@
         <div className="flex flex-col items-center px-2">
           <div className={`${a.pill} text-white px-6 py-1.5 rounded-full font-medium shadow-sm relative`}>
             {title}
-            <span className="absolute -top-2 -right-2 bg-white text-[9px] font-bold uppercase tracking-wide text-slate-500 border border-slate-200 rounded-full px-2 py-0.5 shadow-sm">{tag}</span>
+            <span className="absolute -top-2 -right-2 bg-white text-[10px] font-bold uppercase tracking-wide text-slate-500 border border-slate-200 rounded-full px-2 py-0.5 shadow-sm">{tag}</span>
           </div>
           <p className="text-[10px] text-slate-400 italic mt-2 mb-4 text-center">{sub}</p>
           <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 w-full flex flex-col gap-3 flex-1">
