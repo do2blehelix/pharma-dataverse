@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pharma Data Capture Architecture</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style> body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; } </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- App source kept as text/plain so Babel does NOT auto-run it with the
+       automatic JSX runtime (which emits `import` and fails in a plain script).
+       We transform it manually below with the classic runtime instead. -->
+  <script type="text/plain" id="appSource">
+    const { useState } = React;
+
+    /* ------------------------------------------------------------------ */
+    /*  Inline SVG icons (lucide paths) so there is no npm dependency      */
+    /* ------------------------------------------------------------------ */
+    const Icon = ({ children, size = 24, className = "", ...rest }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+        strokeLinejoin="round" className={className} {...rest}>{children}</svg>
+    );
+    const Factory = (p) => <Icon {...p}>
+      <path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/>
+      <path d="M17 18h1"/><path d="M12 18h1"/><path d="M7 18h1"/></Icon>;
+    const Warehouse = (p) => <Icon {...p}>
+      <path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z"/>
+      <path d="M6 18h12"/><path d="M6 14h12"/><rect width="12" height="12" x="6" y="10"/></Icon>;
+    const Store = (p) => <Icon {...p}>
+      <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+      <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></Icon>;
+    const Stethoscope = (p) => <Icon {...p}>
+      <path d="M11 2v2"/><path d="M5 2v2"/>
+      <path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/>
+      <path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/></Icon>;
+    const Users = (p) => <Icon {...p}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/></Icon>;
+    const Landmark = (p) => <Icon {...p}>
+      <line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/>
+      <line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/>
+      <line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></Icon>;
+    const ChevronDown = (p) => <Icon {...p}><path d="m6 9 6 6 6-6"/></Icon>;
+    const ChevronUp = (p) => <Icon {...p}><path d="m18 15-6-6-6 6"/></Icon>;
+    const Database = (p) => <Icon {...p}>
+      <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/>
+      <path d="M3 12A9 3 0 0 0 21 12"/></Icon>;
+    const XCircle = (p) => <Icon {...p}>
+      <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></Icon>;
+
+    /* ------------------------------------------------------------------ */
+    /*  Data model                                                         */
+    /* ------------------------------------------------------------------ */
+    const VIEW_W = 1000, VIEW_H = 500;
+
+    const DATASETS = {
+      // Prescription (demand)
+      xponent:  { id: 'xponent',  name: 'Xponent',  type: 'prescription', edges: ['p-pat', 'c-pat'] },
+      plantrak: { id: 'plantrak', name: 'PlanTrak', type: 'prescription', edges: ['p-pat', 'c-pat'] },
+      npa:      { id: 'npa',      name: 'NPA',      type: 'prescription', edges: ['p-pat', 'c-pat'] },
+      // Sales (supply)
+      ddd:      { id: 'ddd',      name: 'DDD',      type: 'sales', edges: ['m-p', 'm-c', 'w-p', 'w-c'], missed: ['m-w', 'w-w'] },
+      nsp:      { id: 'nsp',      name: 'NSP',      type: 'sales', edges: ['m-w', 'm-p', 'm-c', 'w-p', 'w-c'] },
+      // Claims (adjudication / reimbursement)
+      lrx:      { id: 'lrx',      name: 'LRx',      type: 'claims', edges: ['p-pat', 'p-payer'] },
+      dx:       { id: 'dx',       name: 'Dx',       type: 'claims', edges: ['c-pat', 'c-payer'] },
+      apld:     { id: 'apld',     name: 'APLD',     type: 'claims', edges: ['p-pat', 'c-pat', 'p-payer', 'c-payer', 'pat-payer'] },
+      // Payer / managed care (formulary & access)
+      mmit:     { id: 'mmit',     name: 'MMIT',     type: 'payer', edges: ['payer-p', 'payer-c', 'pat-payer'] },
+      formulary:{ id: 'formulary',name: 'Formulary',type: 'payer', edges: ['payer-p'] },
+    };
+
+    const NODES = {
+      M:     { id: 'M',     label: 'Manufacturer',      x: 100, y: 200, icon: Factory,     color: 'text-purple-600',  bg: 'bg-purple-100',  border: 'border-purple-300' },
+      W:     { id: 'W',     label: 'Wholesaler',        x: 400, y: 80,  icon: Warehouse,   color: 'text-amber-600',   bg: 'bg-amber-100',   border: 'border-amber-300' },
+      P:     { id: 'P',     label: 'Pharmacy (Retail)', x: 750, y: 80,  icon: Store,       color: 'text-blue-600',    bg: 'bg-blue-100',    border: 'border-blue-300' },
+      C:     { id: 'C',     label: 'Clinic / Hospital', x: 750, y: 320, icon: Stethoscope, color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-300' },
+      Pat:   { id: 'Pat',   label: 'Patient',           x: 950, y: 200, icon: Users,       color: 'text-slate-600',   bg: 'bg-slate-100',   border: 'border-slate-300' },
+      Payer: { id: 'Payer', label: 'Payer / PBM',       x: 510, y: 430, icon: Landmark,    color: 'text-rose-600',    bg: 'bg-rose-100',    border: 'border-rose-300' },
+    };
+
+    const EDGES = [
+      // Physical supply chain
+      { id: 'm-w', from: 'M', to: 'W', label: 'Bulk',         d: 'M 100 200 L 400 80',          mx: 250, my: 140 },
+      { id: 'm-p', from: 'M', to: 'P', label: 'Direct',       d: 'M 100 200 Q 425 240 750 80',  mx: 425, my: 195 },
+      { id: 'm-c', from: 'M', to: 'C', label: 'Direct',       d: 'M 100 200 L 750 320',         mx: 425, my: 260 },
+      { id: 'w-p', from: 'W', to: 'P', label: 'Indirect',     d: 'M 400 80 L 750 80',           mx: 575, my: 70 },
+      { id: 'w-c', from: 'W', to: 'C', label: 'Indirect',     d: 'M 400 80 L 750 320',          mx: 575, my: 200 },
+      { id: 'p-pat', from: 'P', to: 'Pat', label: 'Dispensed',    d: 'M 750 80 L 950 200',      mx: 850, my: 140 },
+      { id: 'c-pat', from: 'C', to: 'Pat', label: 'Administered', d: 'M 750 320 L 950 200',     mx: 850, my: 260 },
+      { id: 'w-w', from: 'W', to: 'W', label: 'W2W Transfer', d: 'M 380 70 C 350 -20, 450 -20, 420 70', mx: 400, my: 15, selfLoop: true },
+      // Claims / reimbursement flows (provider -> payer)
+      { id: 'p-payer',   from: 'P',   to: 'Payer', label: 'Rx Claim',    d: 'M 750 80 C 660 230, 575 350, 522 420',  mx: 612, my: 268 },
+      { id: 'c-payer',   from: 'C',   to: 'Payer', label: 'Med Claim',   d: 'M 750 320 Q 615 405 520 425',           mx: 628, my: 392 },
+      { id: 'pat-payer', from: 'Pat', to: 'Payer', label: 'Enrollment',  d: 'M 950 200 C 880 470, 660 475, 528 438', mx: 745, my: 462 },
+      // Payer -> provider coverage / formulary flows (reverse direction).
+      // Run center-to-center (Payer -> node center) so the refX=32 marker insets
+      // the arrowhead to the node edge, like every other edge.
+      { id: 'payer-p', from: 'Payer', to: 'P', label: 'Formulary',  d: 'M 510 430 C 720 360, 800 200, 750 80',  mx: 728, my: 222 },
+      { id: 'payer-c', from: 'Payer', to: 'C', label: 'Coverage',   d: 'M 510 430 C 640 440, 730 410, 750 320', mx: 690, my: 408 },
+    ];
+
+    const TYPE_COLOR = { prescription: '#2563eb', sales: '#d97706', claims: '#e11d48', payer: '#0d9488' };
+    const TYPE_MARKER = { prescription: 'arrow-blue', sales: 'arrow-amber', claims: 'arrow-rose', payer: 'arrow-teal' };
+
+    /* ------------------------------------------------------------------ */
+    /*  App                                                                */
+    /* ------------------------------------------------------------------ */
+    function App() {
+      const [pinned, setPinned] = useState(null);   // clicked dataset (stays active)
+      const [hovered, setHovered] = useState(null);  // mouse-over dataset
+      const [isHierarchyOpen, setIsHierarchyOpen] = useState(false);
+
+      const activeId = hovered || pinned;            // single-view dataset
+      const compare = pinned && hovered && pinned !== hovered;
+
+      // Comparison palette (used only when comparing two datasets)
+      const CMP = { both: '#16a34a', a: '#4f46e5', b: '#db2777' };
+
+      // Returns the visual style for one edge given the current selection.
+      const edgeStyle = (id) => {
+        if (compare) {
+          const inA = DATASETS[pinned].edges.includes(id);
+          const inB = DATASETS[hovered].edges.includes(id);
+          if (inA && inB) return { color: CMP.both, width: 4, marker: 'arrow-green',  show: true };
+          if (inA)        return { color: CMP.a,    width: 4, marker: 'arrow-indigo', show: true };
+          if (inB)        return { color: CMP.b,    width: 4, marker: 'arrow-pink',   show: true };
+          return { color: '#f1f5f9', width: 2, marker: null, show: false };
+        }
+        if (!activeId) return { color: '#cbd5e1', width: 2, marker: 'arrow-default', show: true, def: true };
+        const ds = DATASETS[activeId];
+        if (ds.edges.includes(id)) {
+          return { color: TYPE_COLOR[ds.type], width: 4, marker: TYPE_MARKER[ds.type], show: true };
+        }
+        if (ds.missed && ds.missed.includes(id)) return { color: '#dc2626', width: 2, marker: null, show: true, missed: true };
+        return { color: '#f1f5f9', width: 2, marker: null, show: false };
+      };
+
+      const btnGroups = [
+        { label: 'Prescription Data', ids: ['xponent', 'plantrak', 'npa'],
+          cls: { on: 'bg-blue-100 border-blue-400 text-blue-800', off: 'bg-white border-blue-100 text-blue-600 hover:bg-blue-50 hover:border-blue-200', ring: 'ring-blue-400' } },
+        { label: 'Sales Data', ids: ['ddd', 'nsp'],
+          cls: { on: 'bg-amber-100 border-amber-400 text-amber-800', off: 'bg-white border-amber-100 text-amber-600 hover:bg-amber-50 hover:border-amber-200', ring: 'ring-amber-400' } },
+        { label: 'Claims Data', ids: ['lrx', 'dx', 'apld'],
+          cls: { on: 'bg-rose-100 border-rose-400 text-rose-800', off: 'bg-white border-rose-100 text-rose-600 hover:bg-rose-50 hover:border-rose-200', ring: 'ring-rose-400' } },
+        { label: 'Payer Data', ids: ['mmit', 'formulary'],
+          cls: { on: 'bg-teal-100 border-teal-400 text-teal-800', off: 'bg-white border-teal-100 text-teal-600 hover:bg-teal-50 hover:border-teal-200', ring: 'ring-teal-400' } },
+      ];
+
+      return (
+        <div className="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 flex flex-col items-center">
+          <div className="w-full max-w-5xl space-y-6">
+
+            {/* Header */}
+            <div className="text-center space-y-2 mb-2">
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Pharma Data Capture Architecture</h1>
+              <p className="text-slate-500"><b>Click</b> a dataset to pin it, then <b>hover</b> another to compare what each captures across the supply chain &amp; reimbursement flow.</p>
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs font-medium text-slate-600">
+              <LegendItem color="#2563eb" label="Prescription (demand)" />
+              <LegendItem color="#d97706" label="Sales (supply)" />
+              <LegendItem color="#e11d48" label="Claims (adjudication)" />
+              <LegendItem color="#0d9488" label="Payer / access (formulary)" />
+              <LegendItem color="#dc2626" dashed label="Not captured / blind spot" />
+            </div>
+
+            {/* 1. INTERACTIVE MAP */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative w-full"
+              style={{ aspectRatio: VIEW_W + ' / ' + VIEW_H }}>
+
+              <svg className="absolute inset-0 w-full h-full pointer-events-none"
+                viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid meet">
+                <defs>
+                  {[['arrow-default', '#cbd5e1'], ['arrow-blue', '#2563eb'], ['arrow-amber', '#d97706'], ['arrow-rose', '#e11d48'],
+                    ['arrow-teal', '#0d9488'],
+                    ['arrow-green', '#16a34a'], ['arrow-indigo', '#4f46e5'], ['arrow-pink', '#db2777']].map(([id, fill]) => (
+                    <marker key={id} id={id} viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill={fill} />
+                    </marker>
+                  ))}
+                </defs>
+
+                {EDGES.map(edge => {
+                  const s = edgeStyle(edge.id);
+                  const labelStroke = s.def ? '#cbd5e1' : s.color;
+                  const labelFill = s.def ? '#64748b' : s.color;
+
+                  return (
+                    <g key={edge.id}>
+                      <path
+                        d={edge.d} fill="none" stroke={s.color} strokeWidth={s.width}
+                        strokeDasharray={s.missed ? '6,6' : 'none'}
+                        markerEnd={s.marker ? `url(#${s.marker})` : ''}
+                        className="transition-all duration-300 ease-in-out"
+                      />
+                      <g transform={`translate(${edge.mx}, ${edge.my})`}
+                        className={`transition-opacity duration-300 ${s.show ? 'opacity-100' : 'opacity-0'}`}>
+                        {s.missed ? (
+                          <g transform="translate(-12, -12)">
+                            <circle cx="12" cy="12" r="13" fill="white" />
+                            <XCircle className="text-red-500" size={24} />
+                          </g>
+                        ) : (
+                          <React.Fragment>
+                            <rect x="-36" y="-12" width="72" height="24" rx="12" fill="white"
+                              stroke={labelStroke} strokeWidth="1" />
+                            <text x="0" y="4" textAnchor="middle" fontSize="11" fontWeight="600"
+                              fill={labelFill}>{edge.label}</text>
+                          </React.Fragment>
+                        )}
+                      </g>
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {/* Node overlay */}
+              <div className="absolute inset-0">
+                {Object.values(NODES).map(node => {
+                  const Ico = node.icon;
+                  return (
+                    <div key={node.id}
+                      className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
+                      style={{ left: `${(node.x / VIEW_W) * 100}%`, top: `${(node.y / VIEW_H) * 100}%` }}>
+                      <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 shadow-sm z-10 bg-white ${node.color} ${node.border}`}>
+                        <Ico size={24} />
+                      </div>
+                      <span className="mt-2 text-xs font-semibold bg-white px-2 py-1 rounded-md border border-slate-200 shadow-sm whitespace-nowrap text-slate-700">
+                        {node.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Status / comparison caption */}
+            <div className="text-center text-sm min-h-[2rem] flex items-center justify-center gap-x-4 gap-y-1 flex-wrap">
+              {compare ? (
+                <React.Fragment>
+                  <span className="font-semibold" style={{ color: CMP.a }}>&#9632; {DATASETS[pinned].name} only</span>
+                  <span className="font-semibold" style={{ color: CMP.b }}>&#9632; {DATASETS[hovered].name} only</span>
+                  <span className="font-semibold" style={{ color: CMP.both }}>&#9632; Captured by both</span>
+                </React.Fragment>
+              ) : activeId ? (
+                <span className="text-slate-600">Showing <b>{DATASETS[activeId].name}</b>
+                  {pinned === activeId && !hovered ? <span className="text-slate-400"> &middot; pinned (click again to release)</span> : null}</span>
+              ) : (
+                <span className="text-slate-400">Click a dataset to pin it, then hover another to compare.</span>
+              )}
+              {pinned && (
+                <button onClick={() => setPinned(null)}
+                  className="text-xs px-2.5 py-0.5 rounded-full border border-slate-300 text-slate-500 hover:bg-slate-100 transition-colors">
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* 2. BUTTON CONTROLS */}
+            <div className="flex flex-col lg:flex-row justify-center items-center gap-6 lg:gap-8 py-2">
+              {btnGroups.map((g, i) => (
+                <React.Fragment key={g.label}>
+                  {i > 0 && <div className="hidden lg:block w-px h-16 bg-slate-200" />}
+                  <div className="flex flex-col items-center gap-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{g.label}</span>
+                    <div className="flex gap-3 flex-wrap justify-center">
+                      {g.ids.map(id => {
+                        const isPinned = pinned === id;
+                        const on = isPinned || hovered === id;
+                        return (
+                          <button key={id}
+                            onClick={() => setPinned(prev => prev === id ? null : id)}
+                            onMouseEnter={() => setHovered(id)}
+                            onMouseLeave={() => setHovered(null)}
+                            className={`px-5 py-2.5 rounded-full font-semibold transition-all duration-200 border-2 shadow-sm
+                              ${on ? g.cls.on + ' shadow-md -translate-y-1' : g.cls.off + ' hover:shadow-sm'}
+                              ${isPinned ? 'ring-2 ring-offset-1 ' + g.cls.ring : ''}`}>
+                            {isPinned ? '\u{1F4CC} ' : ''}{DATASETS[id].name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* 3. COLLAPSIBLE HIERARCHY */}
+            <div className="mt-4 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <button onClick={() => setIsHierarchyOpen(!isHierarchyOpen)}
+                className="w-full flex items-center justify-between p-5 bg-slate-50 hover:bg-slate-100 transition-colors focus:outline-none">
+                <div className="flex items-center gap-3 text-slate-700 font-semibold">
+                  <Database size={20} className="text-slate-500" />
+                  View Dataset Architecture
+                </div>
+                {isHierarchyOpen ? <ChevronUp className="text-slate-400" /> : <ChevronDown className="text-slate-400" />}
+              </button>
+
+              {isHierarchyOpen && (
+                <div className="p-6 md:p-8 border-t border-slate-200 bg-white">
+                  <div className="flex flex-col items-center">
+                    <div className="bg-slate-900 text-white px-6 py-2 rounded-full font-semibold shadow-sm z-10">
+                      Pharma Secondary Data
+                    </div>
+                    <div className="w-px h-6 bg-slate-300" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
+                      {/* Prescription */}
+                      <Branch accent="blue" title="Prescription" tag="Demand"
+                        sub="Volume of drugs prescribed / sold to patients">
+                        <Chips items={['Xponent', 'PlanTrak', 'NPA']} accent="blue" />
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          <b>Prescription</b> history &amp; <b>geography</b> at the <u>Prescriber</u> level.
+                          PlanTrak adds a <b>payer</b> estimate; NPA = National Prescription Audit.
+                        </p>
+                        <Note tone="slate" items={[
+                          'Projected from large samples.',
+                          'Mail order is unprojected.',
+                          'Not total product performance.'
+                        ]} />
+                      </Branch>
+
+                      {/* Sales */}
+                      <Branch accent="amber" title="Sales" tag="Supply"
+                        sub="Volume of drugs shipped / sold out">
+                        <Chips items={['DDD', 'NSP']} accent="amber" />
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          <b>DDD</b> — Direct (Mfr → Pharmacy) + Indirect (Warehouse) sales.
+                          <b> NSP</b> — ~100% national coverage (retail + non-retail).
+                        </p>
+                        <Note tone="red" items={['DDD misses W2W &amp; M2W transfers.']} />
+                      </Branch>
+
+                      {/* Claims */}
+                      <Branch accent="rose" title="Claims" tag="Adjudication"
+                        sub="Reimbursement transactions with the Payer / PBM">
+                        <Chips items={['LRx', 'Dx', 'APLD']} accent="rose" />
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          Adjudicated claims between providers/pharmacies and the <b>Payer/PBM</b>.
+                          Patient-level (tokenized) &amp; longitudinal — captures <b>plan/payer</b>,
+                          copay, cost, diagnosis &amp; procedure codes. <b>APLD</b> links Rx + medical
+                          for the full patient journey.
+                        </p>
+                        <Note tone="rose" items={[
+                          'Open claims: incomplete payer capture &amp; lag.',
+                          'Closed claims: full enrollment, narrower reach.',
+                          'Enables switching, adherence &amp; LOT analysis.'
+                        ]} />
+                      </Branch>
+
+                      {/* Payer / Access */}
+                      <Branch accent="teal" title="Payer" tag="Access"
+                        sub="Formulary status &amp; coverage at the plan / PBM level">
+                        <Chips items={['MMIT', 'Formulary']} accent="teal" />
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          <b>Formulary</b> &amp; <b>coverage</b> position by plan — tier,
+                          restrictions (PA, step edits) &amp; access. <b>MMIT</b> spans retail
+                          (pharmacy) &amp; medical (clinic) benefit; links lives reimbursement to
+                          the <b>payer/PBM</b> decision driving it.
+                        </p>
+                        <Note tone="teal" items={[
+                          'Access / control status, not transaction volume.',
+                          'Plan-level — pair with claims for patient detail.',
+                          'Drives market access &amp; pull-through analysis.'
+                        ]} />
+                      </Branch>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <p className="text-center text-xs text-slate-400 pt-2">
+              Illustrative concept &middot; node = supply-chain actor, edge = a captured transaction.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    /* ---- small presentational helpers ---- */
+    function LegendItem({ color, label, dashed }) {
+      return (
+        <span className="flex items-center gap-2">
+          <svg width="26" height="8"><line x1="0" y1="4" x2="26" y2="4" stroke={color}
+            strokeWidth="3" strokeDasharray={dashed ? '4,3' : 'none'} strokeLinecap="round" /></svg>
+          {label}
+        </span>
+      );
+    }
+
+    const ACCENTS = {
+      blue:  { pill: 'bg-blue-600',  chip: 'bg-blue-100 text-blue-700' },
+      amber: { pill: 'bg-amber-600', chip: 'bg-amber-100 text-amber-700' },
+      rose:  { pill: 'bg-rose-600',  chip: 'bg-rose-100 text-rose-700' },
+      teal:  { pill: 'bg-teal-600',  chip: 'bg-teal-100 text-teal-700' },
+    };
+
+    function Branch({ accent, title, tag, sub, children }) {
+      const a = ACCENTS[accent];
+      return (
+        <div className="flex flex-col items-center px-2">
+          <div className={`${a.pill} text-white px-6 py-1.5 rounded-full font-medium shadow-sm relative`}>
+            {title}
+            <span className="absolute -top-2 -right-2 bg-white text-[9px] font-bold uppercase tracking-wide text-slate-500 border border-slate-200 rounded-full px-2 py-0.5 shadow-sm">{tag}</span>
+          </div>
+          <p className="text-[10px] text-slate-400 italic mt-2 mb-4 text-center">{sub}</p>
+          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 w-full flex flex-col gap-3 flex-1">
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    function Chips({ items, accent }) {
+      const a = ACCENTS[accent];
+      return (
+        <div className="flex justify-center gap-2 flex-wrap">
+          {items.map(it => (
+            <span key={it} className={`${a.chip} px-3 py-1 rounded-full text-xs font-bold shadow-sm`}>{it}</span>
+          ))}
+        </div>
+      );
+    }
+
+    const TONE = {
+      slate: 'text-slate-500 bg-white border-slate-200',
+      red:   'text-red-600 bg-red-50/60 border-red-200',
+      rose:  'text-rose-600 bg-rose-50/60 border-rose-200',
+      teal:  'text-teal-600 bg-teal-50/60 border-teal-200',
+    };
+    function Note({ tone, items }) {
+      return (
+        <div className={`mt-auto text-[10px] border rounded-lg p-2.5 ${TONE[tone]}`}>
+          {items.map((t, i) => <div key={i} dangerouslySetInnerHTML={{ __html: '&bull; ' + t }} />)}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+
+  <!-- Bootstrap: transform the JSX with the CLASSIC runtime, then run it. -->
+  <script>
+    (function () {
+      function fail(msg) {
+        document.getElementById('root').innerHTML =
+          '<div style="max-width:640px;margin:80px auto;font-family:sans-serif;' +
+          'background:#fff1f2;border:1px solid #fecdd3;border-radius:12px;padding:24px;color:#9f1239">' +
+          '<b>Could not start the app.</b><br><br>' + msg + '</div>';
+      }
+      if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+        return fail('React did not load. Check your internet connection (the CDN scripts may be blocked).');
+      }
+      if (typeof Babel === 'undefined') {
+        return fail('Babel did not load. Check your internet connection.');
+      }
+      try {
+        var src = document.getElementById('appSource').textContent;
+        var out = Babel.transform(src, { presets: [['react', { runtime: 'classic' }]] }).code;
+        (0, eval)(out);
+      } catch (e) {
+        console.error(e);
+        fail(String(e && e.message ? e.message : e));
+      }
+    })();
+  </script>
+</body>
+</html>
