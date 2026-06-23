@@ -71,6 +71,13 @@
       <path d="M3 12A9 3 0 0 0 21 12"/></Icon>;
     const XCircle = (p) => <Icon {...p}>
       <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></Icon>;
+    const Pill = (p) => <Icon {...p}>
+      <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/>
+      <path d="m8.5 8.5 7 7"/></Icon>;
+    const LifeBuoy = (p) => <Icon {...p}>
+      <circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/>
+      <path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/>
+      <path d="m9.17 14.83-4.24 4.24"/><circle cx="12" cy="12" r="4"/></Icon>;
 
     /* ------------------------------------------------------------------ */
     /*  Shared geometry & palettes                                         */
@@ -337,7 +344,82 @@
       ],
     };
 
-    const PAGES = [VENDOR, INTERNAL, PRIMARY];
+    /* ---------- PAGE 4 - Channel & Specialty (direct trade) ---------- */
+    const CHANNEL = {
+      id: 'channel', tab: 'Channel',
+      subtitle: 'Data that flows directly from distribution partners to the manufacturer — wholesaler EDI (852 / 867 / 844) and the specialty-pharmacy channel. DDD is overlaid here too (it’s built from these 867 feeds) so you can compare the raw feed against the aggregated vendor product.',
+      typeColor: { channel: '#d97706', financial: '#e11d48', aggregated: '#7c3aed', specialty: '#0d9488', hub: '#0891b2' },
+      legend: [
+        { color: '#d97706', label: 'EDI channel (852 / 867)' },
+        { color: '#e11d48', label: 'Chargeback (844)' },
+        { color: '#7c3aed', label: 'Vendor aggregated (DDD / NSP)' },
+        { color: '#0d9488', label: 'Specialty dispense' },
+        { color: '#0891b2', label: 'Hub / patient services' },
+        { color: '#dc2626', label: 'DDD blind spot', dashed: true },
+      ],
+      nodes: {
+        M:     { id: 'M',     label: 'Manufacturer',       x: 80,  y: 250, icon: Factory,     color: 'text-purple-600',  border: 'border-purple-300' },
+        W:     { id: 'W',     label: 'Wholesaler',         x: 350, y: 85,  icon: Warehouse,   color: 'text-amber-600',   border: 'border-amber-300' },
+        P:     { id: 'P',     label: 'Pharmacy (Retail)',  x: 680, y: 65,  icon: Store,       color: 'text-blue-600',    border: 'border-blue-300' },
+        C:     { id: 'C',     label: 'Clinic / Hospital',  x: 775, y: 185, icon: Stethoscope, color: 'text-emerald-600', border: 'border-emerald-300' },
+        Hub:   { id: 'Hub',   label: 'Hub / Services',     x: 430, y: 290, icon: LifeBuoy,    color: 'text-cyan-600',    border: 'border-cyan-300' },
+        SP:    { id: 'SP',    label: 'Specialty Pharmacy', x: 700, y: 430, icon: Pill,        color: 'text-teal-600',    border: 'border-teal-300' },
+        Pat:   { id: 'Pat',   label: 'Patient',            x: 930, y: 255, icon: Users,       color: 'text-slate-600',   border: 'border-slate-300' },
+        Payer: { id: 'Payer', label: 'Payer / PBM',        x: 175, y: 440, icon: Landmark,    color: 'text-rose-600',    border: 'border-rose-300' },
+      },
+      edges: [
+        { id: 'm-w',      from: 'M',   to: 'W',     label: 'Bulk',        d: 'M 80 250 L 350 85',                   mx: 205, my: 150 },
+        { id: 'cb',       from: 'W',   to: 'M',     label: 'Chargeback',  d: 'M 350 85 Q 175 195 80 250',           mx: 160, my: 205 },
+        { id: 'w-w',      from: 'W',   to: 'W',     label: 'W2W',         d: 'M 330 72 C 300 -18, 400 -18, 370 72', mx: 350, my: 12, selfLoop: true },
+        { id: 'w-p',      from: 'W',   to: 'P',     label: 'Resale',      d: 'M 350 85 L 680 65',                   mx: 515, my: 58 },
+        { id: 'w-c',      from: 'W',   to: 'C',     label: 'Resale',      d: 'M 350 85 L 775 185',                  mx: 575, my: 118 },
+        { id: 'm-p',      from: 'M',   to: 'P',     label: 'Direct',      d: 'M 80 250 Q 380 175 680 65',           mx: 385, my: 150 },
+        { id: 'm-c',      from: 'M',   to: 'C',     label: 'Direct',      d: 'M 80 250 Q 410 295 775 185',          mx: 425, my: 248 },
+        { id: 'contract', from: 'M',   to: 'Payer', label: 'Contract',    d: 'M 80 250 L 175 440',                  mx: 96,  my: 350 },
+        { id: 'm-sp',     from: 'M',   to: 'SP',    label: 'Spec. Dist.', d: 'M 80 250 Q 380 470 700 430',          mx: 300, my: 388 },
+        { id: 'sp-pat',   from: 'SP',  to: 'Pat',   label: 'Dispense',    d: 'M 700 430 L 930 255',                 mx: 828, my: 330 },
+        { id: 'hub-sp',   from: 'Hub', to: 'SP',    label: 'Triage',      d: 'M 430 290 Q 575 365 700 430',         mx: 578, my: 352 },
+        { id: 'm-hub',    from: 'M',   to: 'Hub',   label: 'Sponsor',     d: 'M 80 250 Q 250 255 430 290',          mx: 248, my: 248 },
+        { id: 'hub-pat',  from: 'Hub', to: 'Pat',   label: 'Status',      d: 'M 430 290 Q 680 255 930 255',         mx: 682, my: 246 },
+      ],
+      datasets: {
+        edi852:     { id: 'edi852',     name: '852 Inventory',  type: 'channel',    edges: ['m-w', 'w-w'] },
+        edi867:     { id: 'edi867',     name: '867 Resale',     type: 'channel',    edges: ['w-p', 'w-c'] },
+        edi844:     { id: 'edi844',     name: '844 Chargeback', type: 'financial',  edges: ['cb', 'contract'] },
+        ddd:        { id: 'ddd',        name: 'DDD',            type: 'aggregated', edges: ['m-p', 'm-c', 'w-p', 'w-c'], missed: ['m-w', 'w-w'] },
+        nsp:        { id: 'nsp',        name: 'NSP',            type: 'aggregated', edges: ['m-w', 'm-p', 'm-c', 'w-p', 'w-c'] },
+        sdSales:    { id: 'sdSales',    name: 'Specialty 867',  type: 'specialty',  edges: ['m-sp'] },
+        spDispense: { id: 'spDispense', name: 'SP Dispense',    type: 'specialty',  edges: ['sp-pat'] },
+        hub:        { id: 'hub',        name: 'Hub / Status',   type: 'hub',        edges: ['m-hub', 'hub-sp', 'hub-pat'] },
+      },
+      btnGroups: [
+        { label: 'Direct EDI',        accent: 'amber',  ids: ['edi852', 'edi867', 'edi844'] },
+        { label: 'Vendor Aggregated', accent: 'violet', ids: ['ddd', 'nsp'] },
+        { label: 'Specialty',         accent: 'teal',   ids: ['sdSales', 'spDispense'] },
+        { label: 'Patient Services',  accent: 'cyan',   ids: ['hub'] },
+      ],
+      hierarchyTitle: 'Channel & Specialty Data',
+      branches: [
+        { accent: 'amber', title: 'Direct EDI Channel', tag: 'Trade', sub: 'Wholesaler → manufacturer EDI feeds',
+          chips: ['852 Inventory', '867 Resale', '844 Chargeback'],
+          desc: '<b>852</b> &mdash; on-hand inventory & warehouse withdrawals (incl. <b>M2W / W2W</b> that DDD misses). <b>867</b> &mdash; indirect <u>resale</u> out of the wholesaler to pharmacies / clinics, the raw source DDD is built from. <b>844</b> &mdash; the <b>chargeback</b> claim for the price difference on a contracted sale.',
+          note: { tone: 'orange', items: ['Direct from distributors under a DSA / fee-for-service.', 'Own product only &mdash; no market view.', 'Raw, account-level & fast (often daily).'] } },
+        { accent: 'violet', title: 'Vendor Aggregated', tag: 'Secondary', sub: 'The processed product built from 867',
+          chips: ['DDD', 'NSP'],
+          desc: 'Vendors ingest many <b>867</b> feeds, then clean, standardize & <b>project</b> them into a national product. <b>DDD</b> = direct + indirect movement; <b>NSP</b> = ~100% national. Overlaid here (also on the Vendor tab) to compare the <b>raw feed vs. the aggregate</b>.',
+          note: { tone: 'violet', items: ['Whole-market / competitive view.', 'Projected &mdash; carries projection error & lag.', 'DDD misses M2W & W2W (see 852).'] } },
+        { accent: 'teal', title: 'Specialty Channel', tag: 'Limited Dist.', sub: 'Specialty pharmacy dispense data',
+          chips: ['Specialty 867', 'SP Dispense'],
+          desc: 'Specialty drugs move through a <b>limited distribution network</b> the big-wholesaler feeds barely see. Specialty pharmacies report <b>dispense-level</b> data direct &mdash; ship-to-patient, fill / refill, dose & days supply.',
+          note: { tone: 'teal', items: ['Fills the specialty <b>blind spot</b> in DDD / 867.', 'Patient / dispense grain, not just channel.', 'Per-SP data agreements; your product only.'] } },
+        { accent: 'cyan', title: 'Patient Services', tag: 'Hub', sub: 'Status, access & adherence via the hub',
+          chips: ['Hub / Status'],
+          desc: 'The <b>hub</b> coordinates referral, <b>benefits verification</b>, prior auth, copay assistance & triage to the SP &mdash; capturing patient <b>status</b> the channel and even claims never show (pre-dispense).',
+          note: { tone: 'cyan', items: ['Sees the <b>pre-dispense</b> journey (BV, PA, copay).', 'More timely than claims; status not volume.', 'Consent / privacy bound; small universe.'] } },
+      ],
+    };
+
+    const PAGES = [VENDOR, INTERNAL, PRIMARY, CHANNEL];
 
     /* ------------------------------------------------------------------ */
     /*  App                                                                */
@@ -377,25 +459,41 @@
       return (
         <div className="bg-slate-50 text-slate-800">
 
-          {/* ============ SCREEN 1 — map + controls fill the viewport ============ */}
-          <div className="h-screen w-full flex flex-col px-4 md:px-8 py-3 gap-2.5">
+          {/* ============ Sticky glassmorphic navbar — pinned across the whole page ============ */}
+          <div className="sticky top-0 z-50 px-4 md:px-8 pt-3 pb-3">
+            {/* Progressive-blur backdrop: frosts the gap above / around the bar, then fades out
+                so content below scrolls back into sharp focus (iOS-style header blur). */}
+            <div aria-hidden="true"
+              className="absolute inset-0 pointer-events-none backdrop-blur-lg bg-gradient-to-b from-white/70 via-white/35 to-transparent
+                [mask-image:linear-gradient(to_bottom,black_55%,transparent)] [-webkit-mask-image:linear-gradient(to_bottom,black_55%,transparent)]" />
 
-            {/* Page tabs */}
-            <div className="shrink-0 flex justify-center">
-              <div className="inline-flex rounded-full bg-slate-100 border border-slate-200 p-1 gap-1">
+            <div className="relative flex items-center justify-center min-h-[2.75rem] px-4 py-2 rounded-2xl
+              border border-white/50 bg-white/50 backdrop-blur-xl shadow-lg shadow-slate-900/5 ring-1 ring-white/60">
+              <h1 className="absolute left-4 top-1/2 -translate-y-1/2 text-base md:text-xl font-bold tracking-tight text-slate-900 leading-tight max-w-[38%]">
+                Pharma Data Capture Architecture
+              </h1>
+
+              {/* iOS-style frosted segmented control */}
+              <div className="inline-flex rounded-full bg-white/25 border border-white/40 backdrop-blur-md p-1 gap-1
+                shadow-[inset_0_1px_2px_rgba(15,23,42,0.10),0_1px_1px_rgba(255,255,255,0.7)]">
                 {PAGES.map((p, i) => (
                   <button key={p.id} onClick={() => selectPage(p.id)}
-                    className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors
-                      ${pageId === p.id ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
+                    className={`relative px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ease-out
+                      ${pageId === p.id
+                        ? 'text-slate-900 bg-white/70 backdrop-blur-md ring-1 ring-white/80 shadow-[0_4px_12px_-2px_rgba(15,23,42,0.22),inset_0_1px_0_rgba(255,255,255,0.95)]'
+                        : 'text-slate-500 hover:text-slate-800 hover:bg-white/40'}`}>
                     <span className="text-slate-400 mr-1">{i + 1}</span>{p.tab}
                   </button>
                 ))}
               </div>
             </div>
+          </div>
 
-            {/* Header */}
-            <div className="text-center space-y-0.5 shrink-0">
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">Pharma Data Capture Architecture</h1>
+          {/* ============ SCREEN 1 — map + controls fill the viewport ============ */}
+          <div className="h-[calc(100vh-5rem)] w-full flex flex-col px-4 md:px-8 pb-3 gap-2.5">
+
+            {/* Subtitle */}
+            <div className="text-center shrink-0">
               <p className="text-slate-500 text-sm md:text-base max-w-4xl mx-auto">{def.subtitle}</p>
             </div>
 
