@@ -169,10 +169,11 @@
       ],
       datasets: {
         xponent:  { id: 'xponent',  name: 'Xponent',  type: 'prescription', edges: ['p-pat'] },
-        plantrak: { id: 'plantrak', name: 'PlanTrak', type: 'prescription', edges: ['p-pat', 'p-payer'] },
+        plantrak: { id: 'plantrak', name: 'PlanTrak', type: 'prescription', edges: ['p-pat', 'p-payer'], edgeLabels: { 'p-payer': 'Payer Info' } },
         npa:      { id: 'npa',      name: 'NPA',      type: 'prescription', edges: ['p-pat'] },
         ddd:      { id: 'ddd',      name: 'DDD',      type: 'sales', edges: ['m-p', 'm-c', 'w-p', 'w-c'], missed: ['m-w', 'w-w'] },
         nsp:      { id: 'nsp',      name: 'NSP',      type: 'sales', edges: ['m-w', 'm-p', 'm-c', 'w-p', 'w-c'] },
+        edi867:   { id: 'edi867',   name: '867',      type: 'sales', edges: ['w-p', 'w-c'] },
         lrx:      { id: 'lrx',      name: 'LRx',      type: 'claims', edges: ['p-pat', 'p-payer'] },
         dx:       { id: 'dx',       name: 'Dx',       type: 'claims', edges: ['c-pat', 'c-payer'] },
         apld:     { id: 'apld',     name: 'APLD',     type: 'claims', edges: ['p-pat', 'c-pat', 'p-payer', 'c-payer', 'pat-payer'] },
@@ -181,7 +182,7 @@
       },
       btnGroups: [
         { label: 'Prescription Data', accent: 'blue',  ids: ['xponent', 'plantrak', 'npa'] },
-        { label: 'Sales Data',        accent: 'amber', ids: ['ddd', 'nsp'] },
+        { label: 'Sales Data',        accent: 'amber', ids: ['ddd', 'nsp', 'edi867'] },
         { label: 'Claims Data',       accent: 'rose',  ids: ['lrx', 'dx', 'apld'] },
         { label: 'Payer Data',        accent: 'teal',  ids: ['mmit', 'formulary'] },
       ],
@@ -192,9 +193,9 @@
           desc: '<b>Prescription</b> history & <b>geography</b> at the <u>Prescriber</u> level. PlanTrak adds a <b>payer</b> estimate; NPA = National Prescription Audit.',
           note: { tone: 'slate', items: ['Projected from large samples.', 'Mail order is unprojected.', 'Not total product performance.'] } },
         { accent: 'amber', title: 'Sales', tag: 'Supply', sub: 'Volume of drugs shipped / sold out',
-          chips: ['DDD', 'NSP'],
-          desc: '<b>DDD</b> &mdash; Direct (Mfr &rarr; Pharmacy) + Indirect (Warehouse) sales. <b>NSP</b> &mdash; ~100% national coverage (retail + non-retail).',
-          note: { tone: 'red', items: ['DDD misses W2W & M2W transfers.'] } },
+          chips: ['DDD', 'NSP', '867'],
+          desc: '<b>DDD</b> &mdash; Direct (Mfr &rarr; Pharmacy) + Indirect (Warehouse) sales. <b>NSP</b> &mdash; ~100% national coverage (retail + non-retail). <b>867</b> &mdash; raw wholesaler resale feed (Warehouse &rarr; Pharmacy / Clinic) that DDD is built from &mdash; shown for comparison.',
+          note: { tone: 'red', items: ['DDD misses W2W & M2W transfers.', '867 = single-wholesaler indirect resale, pre-aggregation.'] } },
         { accent: 'rose', title: 'Claims', tag: 'Adjudication', sub: 'Reimbursement transactions with the Payer / PBM',
           chips: ['LRx', 'Dx', 'APLD'],
           desc: 'Adjudicated claims between providers/pharmacies and the <b>Payer/PBM</b>. Patient-level (tokenized) & longitudinal &mdash; captures <b>plan/payer</b>, copay, cost, diagnosis & procedure codes. <b>APLD</b> links Rx + medical for the full patient journey.',
@@ -536,6 +537,12 @@
                     const lbl = s.def
                       ? { w: 56, h: 18, rx: 9,  fs: 9,  y: 3 }
                       : { w: 72, h: 24, rx: 12, fs: 11, y: 4 };
+                    // A dataset may soften an edge's badge while it's the active
+                    // (highlighted) one — e.g. PlanTrak isn't a claim, so its
+                    // 'Rx Claim' edge reads a subtle 'Payer Info' instead.
+                    const ovrLabel = (!compare && activeId && def.datasets[activeId].edgeLabels)
+                      ? def.datasets[activeId].edgeLabels[edge.id] : null;
+                    const labelText = ovrLabel || edge.label;
 
                     return (
                       <g key={edge.id}>
@@ -556,9 +563,11 @@
                             <React.Fragment>
                               <rect x={-lbl.w / 2} y={-lbl.h / 2} width={lbl.w} height={lbl.h} rx={lbl.rx} fill="white"
                                 stroke={labelStroke} strokeWidth="1"
+                                strokeDasharray={ovrLabel ? '3,2' : 'none'}
                                 className="transition-all duration-300 ease-in-out" />
-                              <text x="0" y={lbl.y} textAnchor="middle" fontSize={lbl.fs} fontWeight="600"
-                                fill={labelFill}>{edge.label}</text>
+                              <text x="0" y={lbl.y} textAnchor="middle" fontSize={lbl.fs}
+                                fontWeight={ovrLabel ? '500' : '600'} fontStyle={ovrLabel ? 'italic' : 'normal'}
+                                fill={labelFill}>{labelText}</text>
                             </React.Fragment>
                           )}
                         </g>
