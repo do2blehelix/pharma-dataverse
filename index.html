@@ -49,8 +49,23 @@
       <line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/>
       <line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/>
       <line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></Icon>;
+    const Briefcase = (p) => <Icon {...p}>
+      <rect width="20" height="14" x="2" y="7" rx="2" ry="2"/>
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></Icon>;
+    const Building = (p) => <Icon {...p}>
+      <rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/>
+      <path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/>
+      <path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></Icon>;
+    const MapIcon = (p) => <Icon {...p}>
+      <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+      <line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></Icon>;
+    const Microscope = (p) => <Icon {...p}>
+      <path d="M6 18h8"/><path d="M3 22h18"/><path d="M14 22a7 7 0 1 0 0-14h-1"/>
+      <path d="M9 14h2"/><path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2Z"/>
+      <path d="M12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"/></Icon>;
+    const Award = (p) => <Icon {...p}>
+      <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></Icon>;
     const ChevronDown = (p) => <Icon {...p}><path d="m6 9 6 6 6-6"/></Icon>;
-    const ChevronUp = (p) => <Icon {...p}><path d="m18 15-6-6-6 6"/></Icon>;
     const Database = (p) => <Icon {...p}>
       <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/>
       <path d="M3 12A9 3 0 0 0 21 12"/></Icon>;
@@ -58,210 +73,420 @@
       <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></Icon>;
 
     /* ------------------------------------------------------------------ */
-    /*  Data model                                                         */
+    /*  Shared geometry & palettes                                         */
     /* ------------------------------------------------------------------ */
     const VIEW_W = 1000, VIEW_H = 500;
 
-    const DATASETS = {
-      // Prescription (demand)
-      xponent:  { id: 'xponent',  name: 'Xponent',  type: 'prescription', edges: ['p-pat', 'c-pat'] },
-      plantrak: { id: 'plantrak', name: 'PlanTrak', type: 'prescription', edges: ['p-pat', 'c-pat'] },
-      npa:      { id: 'npa',      name: 'NPA',      type: 'prescription', edges: ['p-pat', 'c-pat'] },
-      // Sales (supply)
-      ddd:      { id: 'ddd',      name: 'DDD',      type: 'sales', edges: ['m-p', 'm-c', 'w-p', 'w-c'], missed: ['m-w', 'w-w'] },
-      nsp:      { id: 'nsp',      name: 'NSP',      type: 'sales', edges: ['m-w', 'm-p', 'm-c', 'w-p', 'w-c'] },
-      // Claims (adjudication / reimbursement)
-      lrx:      { id: 'lrx',      name: 'LRx',      type: 'claims', edges: ['p-pat', 'p-payer'] },
-      dx:       { id: 'dx',       name: 'Dx',       type: 'claims', edges: ['c-pat', 'c-payer'] },
-      apld:     { id: 'apld',     name: 'APLD',     type: 'claims', edges: ['p-pat', 'c-pat', 'p-payer', 'c-payer', 'pat-payer'] },
-      // Payer / managed care (formulary & access)
-      mmit:     { id: 'mmit',     name: 'MMIT',     type: 'payer', edges: ['payer-p', 'payer-c', 'pat-payer'] },
-      formulary:{ id: 'formulary',name: 'Formulary',type: 'payer', edges: ['payer-p'] },
+    // One arrow marker per colour we ever draw (type colours + compare + default).
+    const ALL_MARKERS = ['#cbd5e1', '#16a34a', '#4f46e5', '#db2777',
+      '#2563eb', '#d97706', '#e11d48', '#0d9488',
+      '#7c3aed', '#0891b2', '#ea580c', '#059669'];
+    const markerId = (c) => 'ar' + c.slice(1);
+
+    // Comparison palette (used only when comparing two datasets).
+    const CMP = { both: '#16a34a', a: '#4f46e5', b: '#db2777' };
+
+    // Pill / chip accents for the architecture cards.
+    const ACCENTS = {
+      blue:    { pill: 'bg-blue-600',    chip: 'bg-blue-100 text-blue-700' },
+      amber:   { pill: 'bg-amber-600',   chip: 'bg-amber-100 text-amber-700' },
+      rose:    { pill: 'bg-rose-600',    chip: 'bg-rose-100 text-rose-700' },
+      teal:    { pill: 'bg-teal-600',    chip: 'bg-teal-100 text-teal-700' },
+      violet:  { pill: 'bg-violet-600',  chip: 'bg-violet-100 text-violet-700' },
+      cyan:    { pill: 'bg-cyan-600',    chip: 'bg-cyan-100 text-cyan-700' },
+      orange:  { pill: 'bg-orange-600',  chip: 'bg-orange-100 text-orange-700' },
+      emerald: { pill: 'bg-emerald-600', chip: 'bg-emerald-100 text-emerald-700' },
     };
 
-    const NODES = {
-      M:     { id: 'M',     label: 'Manufacturer',      x: 100, y: 200, icon: Factory,     color: 'text-purple-600',  bg: 'bg-purple-100',  border: 'border-purple-300' },
-      W:     { id: 'W',     label: 'Wholesaler',        x: 400, y: 80,  icon: Warehouse,   color: 'text-amber-600',   bg: 'bg-amber-100',   border: 'border-amber-300' },
-      P:     { id: 'P',     label: 'Pharmacy (Retail)', x: 750, y: 80,  icon: Store,       color: 'text-blue-600',    bg: 'bg-blue-100',    border: 'border-blue-300' },
-      C:     { id: 'C',     label: 'Clinic / Hospital', x: 750, y: 320, icon: Stethoscope, color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-300' },
-      Pat:   { id: 'Pat',   label: 'Patient',           x: 950, y: 200, icon: Users,       color: 'text-slate-600',   bg: 'bg-slate-100',   border: 'border-slate-300' },
-      Payer: { id: 'Payer', label: 'Payer / PBM',       x: 510, y: 430, icon: Landmark,    color: 'text-rose-600',    bg: 'bg-rose-100',    border: 'border-rose-300' },
+    // Button classes per accent.
+    const BTN = {
+      blue:    { on: 'bg-blue-100 border-blue-400 text-blue-800',         off: 'bg-white border-blue-100 text-blue-600 hover:bg-blue-50 hover:border-blue-200',           ring: 'ring-blue-400' },
+      amber:   { on: 'bg-amber-100 border-amber-400 text-amber-800',      off: 'bg-white border-amber-100 text-amber-600 hover:bg-amber-50 hover:border-amber-200',        ring: 'ring-amber-400' },
+      rose:    { on: 'bg-rose-100 border-rose-400 text-rose-800',         off: 'bg-white border-rose-100 text-rose-600 hover:bg-rose-50 hover:border-rose-200',            ring: 'ring-rose-400' },
+      teal:    { on: 'bg-teal-100 border-teal-400 text-teal-800',         off: 'bg-white border-teal-100 text-teal-600 hover:bg-teal-50 hover:border-teal-200',            ring: 'ring-teal-400' },
+      violet:  { on: 'bg-violet-100 border-violet-400 text-violet-800',   off: 'bg-white border-violet-100 text-violet-600 hover:bg-violet-50 hover:border-violet-200',     ring: 'ring-violet-400' },
+      cyan:    { on: 'bg-cyan-100 border-cyan-400 text-cyan-800',         off: 'bg-white border-cyan-100 text-cyan-600 hover:bg-cyan-50 hover:border-cyan-200',            ring: 'ring-cyan-400' },
+      orange:  { on: 'bg-orange-100 border-orange-400 text-orange-800',   off: 'bg-white border-orange-100 text-orange-600 hover:bg-orange-50 hover:border-orange-200',     ring: 'ring-orange-400' },
+      emerald: { on: 'bg-emerald-100 border-emerald-400 text-emerald-800',off: 'bg-white border-emerald-100 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200', ring: 'ring-emerald-400' },
     };
 
-    const EDGES = [
-      // Physical supply chain
-      { id: 'm-w', from: 'M', to: 'W', label: 'Bulk',         d: 'M 100 200 L 400 80',          mx: 250, my: 140 },
-      { id: 'm-p', from: 'M', to: 'P', label: 'Direct',       d: 'M 100 200 Q 425 240 750 80',  mx: 425, my: 195 },
-      { id: 'm-c', from: 'M', to: 'C', label: 'Direct',       d: 'M 100 200 L 750 320',         mx: 425, my: 260 },
-      { id: 'w-p', from: 'W', to: 'P', label: 'Indirect',     d: 'M 400 80 L 750 80',           mx: 575, my: 70 },
-      { id: 'w-c', from: 'W', to: 'C', label: 'Indirect',     d: 'M 400 80 L 750 320',          mx: 575, my: 200 },
-      { id: 'p-pat', from: 'P', to: 'Pat', label: 'Dispensed',    d: 'M 750 80 L 950 200',      mx: 850, my: 140 },
-      { id: 'c-pat', from: 'C', to: 'Pat', label: 'Administered', d: 'M 750 320 L 950 200',     mx: 850, my: 260 },
-      { id: 'w-w', from: 'W', to: 'W', label: 'W2W Transfer', d: 'M 380 70 C 350 -20, 450 -20, 420 70', mx: 400, my: 15, selfLoop: true },
-      // Claims / payer flows are curves. The strokeWidth-scaled marker draws the
-      // arrowhead as a STRAIGHT triangle ~29-53 user units upstream of the endpoint
-      // along the endpoint tangent, so the path must be straight over that band or
-      // the arrowhead floats off the curve. Each curve therefore ends in a straight
-      // 70-unit tail into the target center (`L`), with the cubic's exit tangent
-      // matched to the tail (C1, no kink) so the whole arrowhead lies on the line.
-      { id: 'p-payer',   from: 'P',   to: 'Payer', label: 'Rx Claim',    d: 'M 750 80 C 660 210, 584 323, 550 372 L 510 430',  mx: 612, my: 268 },
-      { id: 'c-payer',   from: 'C',   to: 'Payer', label: 'Med Claim',   d: 'M 750 320 C 660 360, 628 376, 574 401 L 510 430', mx: 628, my: 392 },
-      { id: 'pat-payer', from: 'Pat', to: 'Payer', label: 'Enrollment',  d: 'M 950 200 C 840 470, 638 407, 579 418 L 510 430', mx: 745, my: 462 },
-      { id: 'payer-p', from: 'Payer', to: 'P', label: 'Formulary',  d: 'M 510 430 C 640 340, 750 210, 750 150 L 750 80',  mx: 728, my: 222 },
-      { id: 'payer-c', from: 'Payer', to: 'C', label: 'Coverage',   d: 'M 510 430 C 560 430, 646 398, 694 362 L 750 320', mx: 690, my: 408 },
-    ];
+    const TONE = {
+      slate:  'text-slate-500 bg-white border-slate-200',
+      red:    'text-red-600 bg-red-50/60 border-red-200',
+      rose:   'text-rose-600 bg-rose-50/60 border-rose-200',
+      teal:   'text-teal-600 bg-teal-50/60 border-teal-200',
+      violet: 'text-violet-600 bg-violet-50/60 border-violet-200',
+      cyan:   'text-cyan-600 bg-cyan-50/60 border-cyan-200',
+      orange: 'text-orange-600 bg-orange-50/60 border-orange-200',
+    };
 
-    const TYPE_COLOR = { prescription: '#2563eb', sales: '#d97706', claims: '#e11d48', payer: '#0d9488' };
-    const TYPE_MARKER = { prescription: 'arrow-blue', sales: 'arrow-amber', claims: 'arrow-rose', payer: 'arrow-teal' };
+    /* ================================================================== */
+    /*  PAGE DEFINITIONS — same component, different data per page         */
+    /* ================================================================== */
+
+    /* ---------- PAGE 1 - Secondary data, vendor supplied -------------- */
+    const VENDOR = {
+      id: 'vendor', tab: 'Vendor-Supplied',
+      subtitle: 'Third-party datasets bought from data vendors. Click a dataset to pin it, then hover another to compare what each captures across the supply chain & reimbursement flow.',
+      typeColor: { prescription: '#2563eb', sales: '#d97706', claims: '#e11d48', payer: '#0d9488' },
+      legend: [
+        { color: '#2563eb', label: 'Prescription (demand)' },
+        { color: '#d97706', label: 'Sales (supply)' },
+        { color: '#e11d48', label: 'Claims (adjudication)' },
+        { color: '#0d9488', label: 'Payer / access (formulary)' },
+        { color: '#dc2626', label: 'Not captured / blind spot', dashed: true },
+      ],
+      nodes: {
+        M:     { id: 'M',     label: 'Manufacturer',      x: 100, y: 200, icon: Factory,     color: 'text-purple-600',  border: 'border-purple-300' },
+        W:     { id: 'W',     label: 'Wholesaler',        x: 400, y: 80,  icon: Warehouse,   color: 'text-amber-600',   border: 'border-amber-300' },
+        P:     { id: 'P',     label: 'Pharmacy (Retail)', x: 750, y: 80,  icon: Store,       color: 'text-blue-600',    border: 'border-blue-300' },
+        C:     { id: 'C',     label: 'Clinic / Hospital', x: 750, y: 320, icon: Stethoscope, color: 'text-emerald-600', border: 'border-emerald-300' },
+        Pat:   { id: 'Pat',   label: 'Patient',           x: 950, y: 200, icon: Users,       color: 'text-slate-600',   border: 'border-slate-300' },
+        Payer: { id: 'Payer', label: 'Payer / PBM',       x: 510, y: 430, icon: Landmark,    color: 'text-rose-600',    border: 'border-rose-300' },
+      },
+      edges: [
+        { id: 'm-w', from: 'M', to: 'W', label: 'Bulk',         d: 'M 100 200 L 400 80',          mx: 250, my: 140 },
+        { id: 'm-p', from: 'M', to: 'P', label: 'Direct',       d: 'M 100 200 Q 425 240 750 80',  mx: 425, my: 195 },
+        { id: 'm-c', from: 'M', to: 'C', label: 'Direct',       d: 'M 100 200 L 750 320',         mx: 425, my: 260 },
+        { id: 'w-p', from: 'W', to: 'P', label: 'Indirect',     d: 'M 400 80 L 750 80',           mx: 575, my: 70 },
+        { id: 'w-c', from: 'W', to: 'C', label: 'Indirect',     d: 'M 400 80 L 750 320',          mx: 575, my: 200 },
+        { id: 'p-pat', from: 'P', to: 'Pat', label: 'Dispensed',    d: 'M 750 80 L 950 200',      mx: 850, my: 140 },
+        { id: 'c-pat', from: 'C', to: 'Pat', label: 'Administered', d: 'M 750 320 L 950 200',     mx: 850, my: 260 },
+        { id: 'w-w', from: 'W', to: 'W', label: 'W2W Transfer', d: 'M 380 70 C 350 -20, 450 -20, 420 70', mx: 400, my: 15, selfLoop: true },
+        { id: 'p-payer',   from: 'P',   to: 'Payer', label: 'Rx Claim',    d: 'M 750 80 C 660 230, 575 350, 522 420',  mx: 612, my: 268 },
+        { id: 'c-payer',   from: 'C',   to: 'Payer', label: 'Med Claim',   d: 'M 750 320 Q 615 405 520 425',           mx: 628, my: 392 },
+        { id: 'pat-payer', from: 'Pat', to: 'Payer', label: 'Enrollment',  d: 'M 950 200 C 880 470, 660 475, 528 438', mx: 745, my: 462 },
+        { id: 'payer-p', from: 'Payer', to: 'P', label: 'Formulary',  d: 'M 510 430 C 720 360, 800 200, 750 80',  mx: 728, my: 222 },
+        { id: 'payer-c', from: 'Payer', to: 'C', label: 'Coverage',   d: 'M 510 430 C 640 440, 730 410, 750 320', mx: 690, my: 408 },
+      ],
+      datasets: {
+        xponent:  { id: 'xponent',  name: 'Xponent',  type: 'prescription', edges: ['p-pat', 'c-pat'] },
+        plantrak: { id: 'plantrak', name: 'PlanTrak', type: 'prescription', edges: ['p-pat', 'c-pat'] },
+        npa:      { id: 'npa',      name: 'NPA',      type: 'prescription', edges: ['p-pat', 'c-pat'] },
+        ddd:      { id: 'ddd',      name: 'DDD',      type: 'sales', edges: ['m-p', 'm-c', 'w-p', 'w-c'], missed: ['m-w', 'w-w'] },
+        nsp:      { id: 'nsp',      name: 'NSP',      type: 'sales', edges: ['m-w', 'm-p', 'm-c', 'w-p', 'w-c'] },
+        lrx:      { id: 'lrx',      name: 'LRx',      type: 'claims', edges: ['p-pat', 'p-payer'] },
+        dx:       { id: 'dx',       name: 'Dx',       type: 'claims', edges: ['c-pat', 'c-payer'] },
+        apld:     { id: 'apld',     name: 'APLD',     type: 'claims', edges: ['p-pat', 'c-pat', 'p-payer', 'c-payer', 'pat-payer'] },
+        mmit:     { id: 'mmit',     name: 'MMIT',     type: 'payer', edges: ['payer-p', 'payer-c', 'pat-payer'] },
+        formulary:{ id: 'formulary',name: 'Formulary',type: 'payer', edges: ['payer-p'] },
+      },
+      btnGroups: [
+        { label: 'Prescription Data', accent: 'blue',  ids: ['xponent', 'plantrak', 'npa'] },
+        { label: 'Sales Data',        accent: 'amber', ids: ['ddd', 'nsp'] },
+        { label: 'Claims Data',       accent: 'rose',  ids: ['lrx', 'dx', 'apld'] },
+        { label: 'Payer Data',        accent: 'teal',  ids: ['mmit', 'formulary'] },
+      ],
+      hierarchyTitle: 'Pharma Secondary Data',
+      branches: [
+        { accent: 'blue', title: 'Prescription', tag: 'Demand', sub: 'Volume of drugs prescribed / sold to patients',
+          chips: ['Xponent', 'PlanTrak', 'NPA'],
+          desc: '<b>Prescription</b> history & <b>geography</b> at the <u>Prescriber</u> level. PlanTrak adds a <b>payer</b> estimate; NPA = National Prescription Audit.',
+          note: { tone: 'slate', items: ['Projected from large samples.', 'Mail order is unprojected.', 'Not total product performance.'] } },
+        { accent: 'amber', title: 'Sales', tag: 'Supply', sub: 'Volume of drugs shipped / sold out',
+          chips: ['DDD', 'NSP'],
+          desc: '<b>DDD</b> &mdash; Direct (Mfr &rarr; Pharmacy) + Indirect (Warehouse) sales. <b>NSP</b> &mdash; ~100% national coverage (retail + non-retail).',
+          note: { tone: 'red', items: ['DDD misses W2W & M2W transfers.'] } },
+        { accent: 'rose', title: 'Claims', tag: 'Adjudication', sub: 'Reimbursement transactions with the Payer / PBM',
+          chips: ['LRx', 'Dx', 'APLD'],
+          desc: 'Adjudicated claims between providers/pharmacies and the <b>Payer/PBM</b>. Patient-level (tokenized) & longitudinal &mdash; captures <b>plan/payer</b>, copay, cost, diagnosis & procedure codes. <b>APLD</b> links Rx + medical for the full patient journey.',
+          note: { tone: 'rose', items: ['Open claims: incomplete payer capture & lag.', 'Closed claims: full enrollment, narrower reach.', 'Enables switching, adherence & LOT analysis.'] } },
+        { accent: 'teal', title: 'Payer', tag: 'Access', sub: 'Formulary status & coverage at the plan / PBM level',
+          chips: ['MMIT', 'Formulary'],
+          desc: '<b>Formulary</b> & <b>coverage</b> position by plan &mdash; tier, restrictions (PA, step edits) & access. <b>MMIT</b> spans retail (pharmacy) & medical (clinic) benefit; links lives reimbursement to the <b>payer/PBM</b> decision driving it.',
+          note: { tone: 'teal', items: ['Access / control status, not transaction volume.', 'Plan-level &mdash; pair with claims for patient detail.', 'Drives market access & pull-through analysis.'] } },
+      ],
+    };
+
+    /* ---------- PAGE 2 - Secondary data, internal -------------------- */
+    const INTERNAL = {
+      id: 'internal', tab: 'Internal',
+      subtitle: 'The brand’s own systems — capturing each rep interaction, territory alignment and account affiliation. Click a dataset to pin it, then hover another to compare.',
+      typeColor: { field: '#7c3aed', medical: '#0891b2', alignment: '#ea580c', affiliation: '#059669' },
+      legend: [
+        { color: '#7c3aed', label: 'Field activity (rep ↔ HCP)' },
+        { color: '#0891b2', label: 'Medical (MSL)' },
+        { color: '#ea580c', label: 'Alignment (territory)' },
+        { color: '#059669', label: 'Affiliation (HCP ↔ account)' },
+      ],
+      nodes: {
+        Rep:  { id: 'Rep',  label: 'Sales Rep',        x: 120, y: 200, icon: Briefcase,   color: 'text-violet-600',  border: 'border-violet-300' },
+        HCP:  { id: 'HCP',  label: 'Prescriber (HCP)', x: 500, y: 150, icon: Stethoscope, color: 'text-emerald-600', border: 'border-emerald-300' },
+        HCO:  { id: 'HCO',  label: 'Account / IDN',    x: 850, y: 110, icon: Building,     color: 'text-amber-600',   border: 'border-amber-300' },
+        Terr: { id: 'Terr', label: 'Territory',        x: 300, y: 420, icon: MapIcon,      color: 'text-orange-600',  border: 'border-orange-300' },
+        MSL:  { id: 'MSL',  label: 'MSL / Medical',    x: 120, y: 400, icon: Microscope,   color: 'text-cyan-600',    border: 'border-cyan-300' },
+        Pat:  { id: 'Pat',  label: 'Patient',          x: 870, y: 330, icon: Users,        color: 'text-slate-600',   border: 'border-slate-300' },
+      },
+      edges: [
+        { id: 'rep-call',   from: 'Rep', to: 'HCP',  label: 'Detail',      d: 'M 120 200 Q 300 105 500 150', mx: 300, my: 118 },
+        { id: 'rep-sample', from: 'Rep', to: 'HCP',  label: 'Sample',      d: 'M 120 200 Q 310 150 500 150', mx: 315, my: 158 },
+        { id: 'rep-email',  from: 'Rep', to: 'HCP',  label: 'Email',       d: 'M 120 200 Q 310 200 500 150', mx: 320, my: 196 },
+        { id: 'rep-event',  from: 'Rep', to: 'HCP',  label: 'Speaker',     d: 'M 120 200 Q 300 250 500 150', mx: 300, my: 236 },
+        { id: 'msl-hcp',    from: 'MSL', to: 'HCP',  label: 'Medical',     d: 'M 120 400 Q 260 250 500 150', mx: 255, my: 262 },
+        { id: 'rep-terr',   from: 'Rep', to: 'Terr', label: 'Assigned',    d: 'M 120 200 L 300 420',          mx: 195, my: 318 },
+        { id: 'hcp-terr',   from: 'HCP', to: 'Terr', label: 'Aligned',     d: 'M 500 150 L 300 420',          mx: 415, my: 288 },
+        { id: 'hco-terr',   from: 'HCO', to: 'Terr', label: 'Aligned',     d: 'M 850 110 Q 580 380 300 420', mx: 575, my: 332 },
+        { id: 'hcp-hco',    from: 'HCP', to: 'HCO',  label: 'Affiliation', d: 'M 500 150 L 850 110',          mx: 675, my: 122 },
+        { id: 'hco-hco',    from: 'HCO', to: 'HCO',  label: 'IDN',         d: 'M 830 100 C 800 15, 900 15, 870 100', mx: 850, my: 42, selfLoop: true },
+        { id: 'pat-hcp',    from: 'Pat', to: 'HCP',  label: 'Seen by',     d: 'M 870 330 Q 660 210 500 150', mx: 685, my: 240 },
+      ],
+      datasets: {
+        calls:     { id: 'calls',     name: 'Calls',        type: 'field',       edges: ['rep-call'] },
+        samples:   { id: 'samples',   name: 'Samples',      type: 'field',       edges: ['rep-sample'] },
+        digital:   { id: 'digital',   name: 'Digital',      type: 'field',       edges: ['rep-email'] },
+        speaker:   { id: 'speaker',   name: 'Speaker',      type: 'field',       edges: ['rep-event'] },
+        msl:       { id: 'msl',       name: 'MSL',          type: 'medical',     edges: ['msl-hcp'] },
+        terrAlign: { id: 'terrAlign', name: 'Alignment',    type: 'alignment',   edges: ['rep-terr', 'hcp-terr', 'hco-terr'] },
+        targeting: { id: 'targeting', name: 'Targeting',    type: 'alignment',   edges: ['hcp-terr', 'rep-call'] },
+        affil:     { id: 'affil',     name: 'Affiliation',  type: 'affiliation', edges: ['hcp-hco', 'pat-hcp'] },
+        idn:       { id: 'idn',       name: 'IDN Hierarchy',type: 'affiliation', edges: ['hco-hco', 'hcp-hco'] },
+      },
+      btnGroups: [
+        { label: 'Field Activity', accent: 'violet',  ids: ['calls', 'samples', 'digital', 'speaker'] },
+        { label: 'Medical',        accent: 'cyan',    ids: ['msl'] },
+        { label: 'Alignment',      accent: 'orange',  ids: ['terrAlign', 'targeting'] },
+        { label: 'Affiliation',    accent: 'emerald', ids: ['affil', 'idn'] },
+      ],
+      hierarchyTitle: 'Internal Commercial Data',
+      branches: [
+        { accent: 'violet', title: 'Field Activity', tag: 'CRM', sub: 'Rep ↔ HCP engagement logged in CRM',
+          chips: ['Calls', 'Samples', 'Digital', 'Speaker'],
+          desc: 'Every rep interaction &mdash; <b>details</b>, sample drops, emails & speaker programs &mdash; captured at the <u>HCP</u> level from the CRM (e.g. Veeva).',
+          note: { tone: 'violet', items: ['Self-reported by the field.', 'Coverage = called HCPs only.', 'Activity, not prescribing outcome.'] } },
+        { accent: 'cyan', title: 'Medical', tag: 'MSL', sub: 'Non-promotional scientific exchange',
+          chips: ['MSL Activity'],
+          desc: 'MSL / medical interactions with <b>KOLs</b> & HCPs, kept firewalled from commercial for compliance.',
+          note: { tone: 'cyan', items: ['Scientific, not promotional.', 'Compliance-separated from sales.', 'Limited HCP universe.'] } },
+        { accent: 'orange', title: 'Alignment', tag: 'Ops', sub: 'Who owns which geography & accounts',
+          chips: ['Territory Alignment', 'Targeting'],
+          desc: 'Maps <b>reps &rarr; territories</b> and HCPs / accounts &rarr; territories; defines call plans & targets. The backbone for rolling up any activity or sales.',
+          note: { tone: 'orange', items: ['Changes each cycle (realignments).', 'Zip / Brick or account based.', 'Drives crediting & incentive comp.'] } },
+        { accent: 'emerald', title: 'Affiliation', tag: 'Master Data', sub: 'How providers & accounts relate',
+          chips: ['HCP – HCO', 'IDN Hierarchy'],
+          desc: 'Links HCPs to the hospitals / clinics & <b>IDN / GPO</b> parents they practice under &mdash; the network view behind account-based selling.',
+          note: { tone: 'teal', items: ['Many-to-many & time-varying.', 'Key for IDN / health-system view.', 'Reference data + internal curation.'] } },
+      ],
+    };
+
+    /* ---------- PAGE 3 - Primary data -------------------------------- */
+    const PRIMARY = {
+      id: 'primary', tab: 'Primary',
+      subtitle: 'Research commissioned directly with stakeholders — physicians, patients, payers & experts. Click a dataset to pin it, then hover another to compare.',
+      typeColor: { hcp: '#2563eb', patient: '#e11d48', payer: '#0d9488', expert: '#d97706' },
+      legend: [
+        { color: '#2563eb', label: 'HCP research' },
+        { color: '#e11d48', label: 'Patient research' },
+        { color: '#0d9488', label: 'Payer research' },
+        { color: '#d97706', label: 'Expert / KOL' },
+      ],
+      nodes: {
+        Brand: { id: 'Brand', label: 'Brand / Sponsor', x: 120, y: 250, icon: Factory,     color: 'text-purple-600', border: 'border-purple-300' },
+        Phys:  { id: 'Phys',  label: 'Physician',        x: 480, y: 110, icon: Stethoscope, color: 'text-blue-600',   border: 'border-blue-300' },
+        Pat:   { id: 'Pat',   label: 'Patient',          x: 480, y: 400, icon: Users,       color: 'text-rose-600',   border: 'border-rose-300' },
+        KOL:   { id: 'KOL',   label: 'KOL / Expert',     x: 840, y: 150, icon: Award,       color: 'text-amber-600',  border: 'border-amber-300' },
+        Payer: { id: 'Payer', label: 'Payer / PBM',      x: 840, y: 380, icon: Landmark,    color: 'text-teal-600',   border: 'border-teal-300' },
+      },
+      edges: [
+        { id: 'atu-hcp',     from: 'Brand', to: 'Phys',  label: 'ATU',         d: 'M 120 250 Q 300 140 480 110', mx: 300, my: 150 },
+        { id: 'msg-hcp',     from: 'Brand', to: 'Phys',  label: 'Message',     d: 'M 120 250 Q 300 185 480 110', mx: 305, my: 192 },
+        { id: 'promo-hcp',   from: 'Brand', to: 'Phys',  label: 'Promo',       d: 'M 120 250 Q 300 225 480 110', mx: 300, my: 232 },
+        { id: 'atu-pat',     from: 'Brand', to: 'Pat',   label: 'Survey',      d: 'M 120 250 Q 300 360 480 400', mx: 300, my: 352 },
+        { id: 'pro-pat',     from: 'Brand', to: 'Pat',   label: 'PRO',         d: 'M 120 250 Q 300 318 480 400', mx: 305, my: 316 },
+        { id: 'journey-pat', from: 'Brand', to: 'Pat',   label: 'Journey',     d: 'M 120 250 Q 300 282 480 400', mx: 300, my: 280 },
+        { id: 'payer-survey',from: 'Brand', to: 'Payer', label: 'Payer ATU',   d: 'M 120 250 C 350 460, 650 460, 840 380', mx: 470, my: 432 },
+        { id: 'access-res',  from: 'Brand', to: 'Payer', label: 'Access',      d: 'M 120 250 C 360 420, 660 420, 840 380', mx: 490, my: 398 },
+        { id: 'kol',         from: 'Brand', to: 'KOL',   label: 'Advisory',    d: 'M 120 250 C 350 70, 650 70, 840 150',   mx: 480, my: 90 },
+        { id: 'chart',       from: 'Phys',  to: 'Pat',   label: 'Chart Audit', d: 'M 480 110 L 480 400', mx: 480, my: 255 },
+      ],
+      datasets: {
+        atu:        { id: 'atu',        name: 'ATU',             type: 'hcp',     edges: ['atu-hcp'] },
+        msgtest:    { id: 'msgtest',    name: 'Message Testing', type: 'hcp',     edges: ['msg-hcp'] },
+        promo:      { id: 'promo',      name: 'Promo Response',  type: 'hcp',     edges: ['promo-hcp'] },
+        patatu:     { id: 'patatu',     name: 'Patient Survey',  type: 'patient', edges: ['atu-pat'] },
+        pro:        { id: 'pro',        name: 'PRO / QoL',       type: 'patient', edges: ['pro-pat'] },
+        journey:    { id: 'journey',    name: 'Patient Journey', type: 'patient', edges: ['journey-pat', 'chart'] },
+        payeratu:   { id: 'payeratu',   name: 'Payer Survey',    type: 'payer',   edges: ['payer-survey'] },
+        access:     { id: 'access',     name: 'Access Research', type: 'payer',   edges: ['access-res'] },
+        advisory:   { id: 'advisory',   name: 'Advisory Boards', type: 'expert',  edges: ['kol'] },
+        chartaudit: { id: 'chartaudit', name: 'Chart Audit',     type: 'expert',  edges: ['chart'] },
+      },
+      btnGroups: [
+        { label: 'HCP Research',     accent: 'blue',  ids: ['atu', 'msgtest', 'promo'] },
+        { label: 'Patient Research', accent: 'rose',  ids: ['patatu', 'pro', 'journey'] },
+        { label: 'Payer Research',   accent: 'teal',  ids: ['payeratu', 'access'] },
+        { label: 'Expert / KOL',     accent: 'amber', ids: ['advisory', 'chartaudit'] },
+      ],
+      hierarchyTitle: 'Primary Market Research',
+      branches: [
+        { accent: 'blue', title: 'HCP Research', tag: 'Demand', sub: 'Surveys & panels with prescribers',
+          chips: ['ATU', 'Message Testing', 'Promo Response'],
+          desc: '<b>Awareness-Trial-Usage</b>, message & concept testing and promotional response, fielded directly with physician samples / panels.',
+          note: { tone: 'slate', items: ['Projectable to the sampled universe.', 'Attitudinal, not transactional.', 'Recall / recency bias.'] } },
+        { accent: 'rose', title: 'Patient Research', tag: 'Experience', sub: 'Direct from patients',
+          chips: ['Patient Survey', 'PRO / QoL', 'Patient Journey'],
+          desc: 'Patient-reported awareness, experience, <b>quality-of-life (PRO)</b> & journey mapping &mdash; the voice of the patient that claims can’t see.',
+          note: { tone: 'rose', items: ['Consent & privacy bound.', 'Small, recruited samples.', 'Self-reported outcomes.'] } },
+        { accent: 'teal', title: 'Payer Research', tag: 'Access', sub: 'Surveys with payers & PBMs',
+          chips: ['Payer Survey', 'Access Research'],
+          desc: 'Payer / PBM attitudes on coverage, formulary intent & access drivers &mdash; the <b>&ldquo;why&rdquo;</b> behind formulary decisions.',
+          note: { tone: 'teal', items: ['Few, senior respondents.', 'Directional, not census.', 'Pairs with MMIT / claims.'] } },
+        { accent: 'amber', title: 'Expert / KOL', tag: 'Insight', sub: 'Deep qualitative with experts',
+          chips: ['Advisory Boards', 'Chart Audit'],
+          desc: 'Advisory boards, KOL interviews & retrospective <b>chart audits</b> &mdash; rich clinical context & real-world treatment patterns.',
+          note: { tone: 'orange', items: ['Qualitative / small N.', 'Expert selection bias.', 'Not statistically projectable.'] } },
+      ],
+    };
+
+    const PAGES = [VENDOR, INTERNAL, PRIMARY];
 
     /* ------------------------------------------------------------------ */
     /*  App                                                                */
     /* ------------------------------------------------------------------ */
     function App() {
+      const [pageId, setPageId] = useState('vendor');
       const [pinned, setPinned] = useState(null);   // clicked dataset (stays active)
       const [hovered, setHovered] = useState(null);  // mouse-over dataset
+
+      const def = PAGES.find(p => p.id === pageId);
+
+      // Switching pages starts each page fresh.
+      const selectPage = (id) => { setPageId(id); setPinned(null); setHovered(null); };
 
       const activeId = hovered || pinned;            // single-view dataset
       const compare = pinned && hovered && pinned !== hovered;
 
-      // Comparison palette (used only when comparing two datasets)
-      const CMP = { both: '#16a34a', a: '#4f46e5', b: '#db2777' };
-
       // Returns the visual style for one edge given the current selection.
       const edgeStyle = (id) => {
         if (compare) {
-          const inA = DATASETS[pinned].edges.includes(id);
-          const inB = DATASETS[hovered].edges.includes(id);
-          if (inA && inB) return { color: CMP.both, width: 4, marker: 'arrow-green',  show: true };
-          if (inA)        return { color: CMP.a,    width: 4, marker: 'arrow-indigo', show: true };
-          if (inB)        return { color: CMP.b,    width: 4, marker: 'arrow-pink',   show: true };
-          return { color: '#f1f5f9', width: 2, marker: null, show: false };
+          const inA = def.datasets[pinned].edges.includes(id);
+          const inB = def.datasets[hovered].edges.includes(id);
+          if (inA && inB) return { color: CMP.both, width: 4, show: true };
+          if (inA)        return { color: CMP.a,    width: 4, show: true };
+          if (inB)        return { color: CMP.b,    width: 4, show: true };
+          return { color: '#f1f5f9', width: 2, show: false };
         }
-        if (!activeId) return { color: '#cbd5e1', width: 2, marker: 'arrow-default', show: true, def: true };
-        const ds = DATASETS[activeId];
+        if (!activeId) return { color: '#cbd5e1', width: 2, show: true, def: true };
+        const ds = def.datasets[activeId];
         if (ds.edges.includes(id)) {
-          return { color: TYPE_COLOR[ds.type], width: 4, marker: TYPE_MARKER[ds.type], show: true };
+          return { color: def.typeColor[ds.type], width: 4, show: true };
         }
-        if (ds.missed && ds.missed.includes(id)) return { color: '#dc2626', width: 2, marker: null, show: true, missed: true };
-        return { color: '#f1f5f9', width: 2, marker: null, show: false };
+        if (ds.missed && ds.missed.includes(id)) return { color: '#dc2626', width: 2, show: true, missed: true };
+        return { color: '#f1f5f9', width: 2, show: false };
       };
-
-      const btnGroups = [
-        { label: 'Prescription Data', ids: ['xponent', 'plantrak', 'npa'],
-          cls: { on: 'bg-blue-100 border-blue-400 text-blue-800', off: 'bg-white border-blue-100 text-blue-600 hover:bg-blue-50 hover:border-blue-200', ring: 'ring-blue-400' } },
-        { label: 'Sales Data', ids: ['ddd', 'nsp'],
-          cls: { on: 'bg-amber-100 border-amber-400 text-amber-800', off: 'bg-white border-amber-100 text-amber-600 hover:bg-amber-50 hover:border-amber-200', ring: 'ring-amber-400' } },
-        { label: 'Claims Data', ids: ['lrx', 'dx', 'apld'],
-          cls: { on: 'bg-rose-100 border-rose-400 text-rose-800', off: 'bg-white border-rose-100 text-rose-600 hover:bg-rose-50 hover:border-rose-200', ring: 'ring-rose-400' } },
-        { label: 'Payer Data', ids: ['mmit', 'formulary'],
-          cls: { on: 'bg-teal-100 border-teal-400 text-teal-800', off: 'bg-white border-teal-100 text-teal-600 hover:bg-teal-50 hover:border-teal-200', ring: 'ring-teal-400' } },
-      ];
 
       return (
         <div className="bg-slate-50 text-slate-800">
 
           {/* ============ SCREEN 1 — map + controls fill the viewport ============ */}
-          <div className="h-screen w-full flex flex-col px-4 md:px-8 py-4 gap-3">
+          <div className="h-screen w-full flex flex-col px-4 md:px-8 py-3 gap-2.5">
+
+            {/* Page tabs */}
+            <div className="shrink-0 flex justify-center">
+              <div className="inline-flex rounded-full bg-slate-100 border border-slate-200 p-1 gap-1">
+                {PAGES.map((p, i) => (
+                  <button key={p.id} onClick={() => selectPage(p.id)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors
+                      ${pageId === p.id ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
+                    <span className="text-slate-400 mr-1">{i + 1}</span>{p.tab}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Header */}
-            <div className="text-center space-y-1 shrink-0">
+            <div className="text-center space-y-0.5 shrink-0">
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">Pharma Data Capture Architecture</h1>
-              <p className="text-slate-500 text-sm md:text-base"><b>Click</b> a dataset to pin it, then <b>hover</b> another to compare what each captures across the supply chain &amp; reimbursement flow.</p>
+              <p className="text-slate-500 text-sm md:text-base max-w-4xl mx-auto">{def.subtitle}</p>
             </div>
 
             {/* Legend */}
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs font-medium text-slate-600 shrink-0">
-              <LegendItem color="#2563eb" label="Prescription (demand)" />
-              <LegendItem color="#d97706" label="Sales (supply)" />
-              <LegendItem color="#e11d48" label="Claims (adjudication)" />
-              <LegendItem color="#0d9488" label="Payer / access (formulary)" />
-              <LegendItem color="#dc2626" dashed label="Not captured / blind spot" />
+              {def.legend.map(l => <LegendItem key={l.label} color={l.color} label={l.label} dashed={l.dashed} />)}
             </div>
 
             {/* 1. INTERACTIVE MAP — flexes to fill the remaining viewport height while
                  keeping its 2:1 ratio so the percent-positioned nodes stay aligned
                  with the SVG edges. */}
             <div className="flex-1 min-h-0 flex items-center justify-center">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative h-full max-w-full mx-auto"
-              style={{ aspectRatio: VIEW_W + ' / ' + VIEW_H }}>
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative h-full max-w-full mx-auto"
+                style={{ aspectRatio: VIEW_W + ' / ' + VIEW_H }}>
 
-              <svg className="absolute inset-0 w-full h-full pointer-events-none"
-                viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid meet">
-                <defs>
-                  {[['arrow-default', '#cbd5e1'], ['arrow-blue', '#2563eb'], ['arrow-amber', '#d97706'], ['arrow-rose', '#e11d48'],
-                    ['arrow-teal', '#0d9488'],
-                    ['arrow-green', '#16a34a'], ['arrow-indigo', '#4f46e5'], ['arrow-pink', '#db2777']].map(([id, fill]) => (
-                    <marker key={id} id={id} viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                      <path d="M 0 0 L 10 5 L 0 10 z" fill={fill} />
-                    </marker>
-                  ))}
-                </defs>
+                <svg className="absolute inset-0 w-full h-full pointer-events-none"
+                  viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid meet">
+                  <defs>
+                    {ALL_MARKERS.map(c => (
+                      <marker key={c} id={markerId(c)} viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill={c} />
+                      </marker>
+                    ))}
+                  </defs>
 
-                {EDGES.map(edge => {
-                  const s = edgeStyle(edge.id);
-                  const labelStroke = s.def ? '#cbd5e1' : s.color;
-                  const labelFill = s.def ? '#64748b' : s.color;
+                  {def.edges.map(edge => {
+                    const s = edgeStyle(edge.id);
+                    const labelStroke = s.def ? '#cbd5e1' : s.color;
+                    const labelFill = s.def ? '#64748b' : s.color;
+                    const arrow = (s.show && !s.missed) ? `url(#${markerId(s.color)})` : '';
 
-                  return (
-                    <g key={edge.id}>
-                      <path
-                        d={edge.d} fill="none" stroke={s.color} strokeWidth={s.width}
-                        strokeDasharray={s.missed ? '6,6' : 'none'}
-                        markerEnd={s.marker ? `url(#${s.marker})` : ''}
-                        className="transition-all duration-300 ease-in-out"
-                      />
-                      <g transform={`translate(${edge.mx}, ${edge.my})`}
-                        className={`transition-opacity duration-300 ${s.show ? 'opacity-100' : 'opacity-0'}`}>
-                        {s.missed ? (
-                          <g transform="translate(-12, -12)">
-                            <circle cx="12" cy="12" r="13" fill="white" />
-                            <XCircle className="text-red-500" size={24} />
-                          </g>
-                        ) : (
-                          <React.Fragment>
-                            <rect x="-36" y="-12" width="72" height="24" rx="12" fill="white"
-                              stroke={labelStroke} strokeWidth="1" />
-                            <text x="0" y="4" textAnchor="middle" fontSize="11" fontWeight="600"
-                              fill={labelFill}>{edge.label}</text>
-                          </React.Fragment>
-                        )}
+                    return (
+                      <g key={edge.id}>
+                        <path
+                          d={edge.d} fill="none" stroke={s.color} strokeWidth={s.width}
+                          strokeDasharray={s.missed ? '6,6' : 'none'}
+                          markerEnd={arrow}
+                          className="transition-all duration-300 ease-in-out"
+                        />
+                        <g transform={`translate(${edge.mx}, ${edge.my})`}
+                          className={`transition-opacity duration-300 ${s.show ? 'opacity-100' : 'opacity-0'}`}>
+                          {s.missed ? (
+                            <g transform="translate(-12, -12)">
+                              <circle cx="12" cy="12" r="13" fill="white" />
+                              <XCircle className="text-red-500" size={24} />
+                            </g>
+                          ) : (
+                            <React.Fragment>
+                              <rect x="-36" y="-12" width="72" height="24" rx="12" fill="white"
+                                stroke={labelStroke} strokeWidth="1" />
+                              <text x="0" y="4" textAnchor="middle" fontSize="11" fontWeight="600"
+                                fill={labelFill}>{edge.label}</text>
+                            </React.Fragment>
+                          )}
+                        </g>
                       </g>
-                    </g>
-                  );
-                })}
-              </svg>
+                    );
+                  })}
+                </svg>
 
-              {/* Node overlay */}
-              <div className="absolute inset-0">
-                {Object.values(NODES).map(node => {
-                  const Ico = node.icon;
-                  return (
-                    <div key={node.id}
-                      className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
-                      style={{ left: `${(node.x / VIEW_W) * 100}%`, top: `${(node.y / VIEW_H) * 100}%` }}>
-                      <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 shadow-sm z-10 bg-white ${node.color} ${node.border}`}>
-                        <Ico size={24} />
+                {/* Node overlay */}
+                <div className="absolute inset-0">
+                  {Object.values(def.nodes).map(node => {
+                    const Ico = node.icon;
+                    return (
+                      <div key={node.id}
+                        className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
+                        style={{ left: `${(node.x / VIEW_W) * 100}%`, top: `${(node.y / VIEW_H) * 100}%` }}>
+                        <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 shadow-sm z-10 bg-white ${node.color} ${node.border}`}>
+                          <Ico size={24} />
+                        </div>
+                        <span className="mt-2 text-xs font-semibold bg-white px-2 py-1 rounded-md border border-slate-200 shadow-sm whitespace-nowrap text-slate-700">
+                          {node.label}
+                        </span>
                       </div>
-                      <span className="mt-2 text-xs font-semibold bg-white px-2 py-1 rounded-md border border-slate-200 shadow-sm whitespace-nowrap text-slate-700">
-                        {node.label}
-                      </span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
             </div>
 
             {/* Status / comparison caption */}
             <div className="text-center text-sm min-h-[2rem] flex items-center justify-center gap-x-4 gap-y-1 flex-wrap shrink-0">
               {compare ? (
                 <React.Fragment>
-                  <span className="font-semibold" style={{ color: CMP.a }}>&#9632; {DATASETS[pinned].name} only</span>
-                  <span className="font-semibold" style={{ color: CMP.b }}>&#9632; {DATASETS[hovered].name} only</span>
+                  <span className="font-semibold" style={{ color: CMP.a }}>&#9632; {def.datasets[pinned].name} only</span>
+                  <span className="font-semibold" style={{ color: CMP.b }}>&#9632; {def.datasets[hovered].name} only</span>
                   <span className="font-semibold" style={{ color: CMP.both }}>&#9632; Captured by both</span>
                 </React.Fragment>
               ) : activeId ? (
-                <span className="text-slate-600">Showing <b>{DATASETS[activeId].name}</b>
+                <span className="text-slate-600">Showing <b>{def.datasets[activeId].name}</b>
                   {pinned === activeId && !hovered ? <span className="text-slate-400"> &middot; pinned (click again to release)</span> : null}</span>
               ) : (
                 <span className="text-slate-400">Click a dataset to pin it, then hover another to compare.</span>
@@ -275,36 +500,39 @@
             </div>
 
             {/* 2. BUTTON CONTROLS */}
-            <div className="flex flex-col lg:flex-row justify-center items-center gap-6 lg:gap-8 py-2 shrink-0">
-              {btnGroups.map((g, i) => (
-                <React.Fragment key={g.label}>
-                  {i > 0 && <div className="hidden lg:block w-px h-16 bg-slate-200" />}
-                  <div className="flex flex-col items-center gap-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{g.label}</span>
-                    <div className="flex gap-3 flex-wrap justify-center">
-                      {g.ids.map(id => {
-                        const isPinned = pinned === id;
-                        const on = isPinned || hovered === id;
-                        return (
-                          <button key={id}
-                            onClick={() => setPinned(prev => prev === id ? null : id)}
-                            onMouseEnter={() => setHovered(id)}
-                            onMouseLeave={() => setHovered(null)}
-                            className={`px-5 py-2.5 rounded-full font-semibold transition-all duration-200 border-2 shadow-sm
-                              ${on ? g.cls.on + ' shadow-md -translate-y-1' : g.cls.off + ' hover:shadow-sm'}
-                              ${isPinned ? 'ring-2 ring-offset-1 ' + g.cls.ring : ''}`}>
-                            {isPinned ? '\u{1F4CC} ' : ''}{DATASETS[id].name}
-                          </button>
-                        );
-                      })}
+            <div className="flex flex-col lg:flex-row justify-center items-center gap-5 lg:gap-8 shrink-0">
+              {def.btnGroups.map((g, i) => {
+                const cls = BTN[g.accent];
+                return (
+                  <React.Fragment key={g.label}>
+                    {i > 0 && <div className="hidden lg:block w-px h-14 bg-slate-200" />}
+                    <div className="flex flex-col items-center gap-2.5">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{g.label}</span>
+                      <div className="flex gap-3 flex-wrap justify-center">
+                        {g.ids.map(id => {
+                          const isPinned = pinned === id;
+                          const on = isPinned || hovered === id;
+                          return (
+                            <button key={id}
+                              onClick={() => setPinned(prev => prev === id ? null : id)}
+                              onMouseEnter={() => setHovered(id)}
+                              onMouseLeave={() => setHovered(null)}
+                              className={`px-5 py-2.5 rounded-full font-semibold transition-all duration-200 border-2 shadow-sm
+                                ${on ? cls.on + ' shadow-md -translate-y-1' : cls.off + ' hover:shadow-sm'}
+                                ${isPinned ? 'ring-2 ring-offset-1 ' + cls.ring : ''}`}>
+                              {isPinned ? '\u{1F4CC} ' : ''}{def.datasets[id].name}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                </React.Fragment>
-              ))}
+                  </React.Fragment>
+                );
+              })}
             </div>
 
             {/* Scroll cue — the dataset architecture sits below the fold */}
-            <div className="shrink-0 flex flex-col items-center text-slate-400 text-xs gap-0.5 pb-1">
+            <div className="shrink-0 flex flex-col items-center text-slate-400 text-xs gap-0.5">
               <span className="uppercase tracking-wider">Scroll for dataset architecture</span>
               <ChevronDown size={18} className="animate-bounce" />
             </div>
@@ -318,76 +546,18 @@
             </div>
 
             <div className="flex flex-col items-center">
-                    <div className="bg-slate-900 text-white px-6 py-2 rounded-full font-semibold shadow-sm z-10">
-                      Pharma Secondary Data
-                    </div>
-                    <div className="w-px h-6 bg-slate-300" />
+              <div className="bg-slate-900 text-white px-6 py-2 rounded-full font-semibold shadow-sm z-10">
+                {def.hierarchyTitle}
+              </div>
+              <div className="w-px h-6 bg-slate-300" />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
-                      {/* Prescription */}
-                      <Branch accent="blue" title="Prescription" tag="Demand"
-                        sub="Volume of drugs prescribed / sold to patients">
-                        <Chips items={['Xponent', 'PlanTrak', 'NPA']} accent="blue" />
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          <b>Prescription</b> history &amp; <b>geography</b> at the <u>Prescriber</u> level.
-                          PlanTrak adds a <b>payer</b> estimate; NPA = National Prescription Audit.
-                        </p>
-                        <Note tone="slate" items={[
-                          'Projected from large samples.',
-                          'Mail order is unprojected.',
-                          'Not total product performance.'
-                        ]} />
-                      </Branch>
-
-                      {/* Sales */}
-                      <Branch accent="amber" title="Sales" tag="Supply"
-                        sub="Volume of drugs shipped / sold out">
-                        <Chips items={['DDD', 'NSP']} accent="amber" />
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          <b>DDD</b> — Direct (Mfr → Pharmacy) + Indirect (Warehouse) sales.
-                          <b> NSP</b> — ~100% national coverage (retail + non-retail).
-                        </p>
-                        <Note tone="red" items={['DDD misses W2W &amp; M2W transfers.']} />
-                      </Branch>
-
-                      {/* Claims */}
-                      <Branch accent="rose" title="Claims" tag="Adjudication"
-                        sub="Reimbursement transactions with the Payer / PBM">
-                        <Chips items={['LRx', 'Dx', 'APLD']} accent="rose" />
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          Adjudicated claims between providers/pharmacies and the <b>Payer/PBM</b>.
-                          Patient-level (tokenized) &amp; longitudinal — captures <b>plan/payer</b>,
-                          copay, cost, diagnosis &amp; procedure codes. <b>APLD</b> links Rx + medical
-                          for the full patient journey.
-                        </p>
-                        <Note tone="rose" items={[
-                          'Open claims: incomplete payer capture &amp; lag.',
-                          'Closed claims: full enrollment, narrower reach.',
-                          'Enables switching, adherence &amp; LOT analysis.'
-                        ]} />
-                      </Branch>
-
-                      {/* Payer / Access */}
-                      <Branch accent="teal" title="Payer" tag="Access"
-                        sub="Formulary status &amp; coverage at the plan / PBM level">
-                        <Chips items={['MMIT', 'Formulary']} accent="teal" />
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          <b>Formulary</b> &amp; <b>coverage</b> position by plan — tier,
-                          restrictions (PA, step edits) &amp; access. <b>MMIT</b> spans retail
-                          (pharmacy) &amp; medical (clinic) benefit; links lives reimbursement to
-                          the <b>payer/PBM</b> decision driving it.
-                        </p>
-                        <Note tone="teal" items={[
-                          'Access / control status, not transaction volume.',
-                          'Plan-level — pair with claims for patient detail.',
-                          'Drives market access &amp; pull-through analysis.'
-                        ]} />
-                      </Branch>
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
+                {def.branches.map(b => <Branch key={b.title} {...b} />)}
+              </div>
             </div>
 
             <p className="text-center text-xs text-slate-400 pt-8">
-              Illustrative concept &middot; node = supply-chain actor, edge = a captured transaction.
+              Illustrative concept &middot; node = actor, edge = a captured interaction or relationship.
             </p>
           </div>
         </div>
@@ -405,14 +575,7 @@
       );
     }
 
-    const ACCENTS = {
-      blue:  { pill: 'bg-blue-600',  chip: 'bg-blue-100 text-blue-700' },
-      amber: { pill: 'bg-amber-600', chip: 'bg-amber-100 text-amber-700' },
-      rose:  { pill: 'bg-rose-600',  chip: 'bg-rose-100 text-rose-700' },
-      teal:  { pill: 'bg-teal-600',  chip: 'bg-teal-100 text-teal-700' },
-    };
-
-    function Branch({ accent, title, tag, sub, children }) {
+    function Branch({ accent, title, tag, sub, chips, desc, note }) {
       const a = ACCENTS[accent];
       return (
         <div className="flex flex-col items-center px-2">
@@ -422,7 +585,9 @@
           </div>
           <p className="text-[10px] text-slate-400 italic mt-2 mb-4 text-center">{sub}</p>
           <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 w-full flex flex-col gap-3 flex-1">
-            {children}
+            <Chips items={chips} accent={accent} />
+            <p className="text-xs text-slate-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: desc }} />
+            <Note tone={note.tone} items={note.items} />
           </div>
         </div>
       );
@@ -439,12 +604,6 @@
       );
     }
 
-    const TONE = {
-      slate: 'text-slate-500 bg-white border-slate-200',
-      red:   'text-red-600 bg-red-50/60 border-red-200',
-      rose:  'text-rose-600 bg-rose-50/60 border-rose-200',
-      teal:  'text-teal-600 bg-teal-50/60 border-teal-200',
-    };
     function Note({ tone, items }) {
       return (
         <div className={`mt-auto text-[10px] border rounded-lg p-2.5 ${TONE[tone]}`}>
