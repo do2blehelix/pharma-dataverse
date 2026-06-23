@@ -98,15 +98,17 @@
       { id: 'p-pat', from: 'P', to: 'Pat', label: 'Dispensed',    d: 'M 750 80 L 950 200',      mx: 850, my: 140 },
       { id: 'c-pat', from: 'C', to: 'Pat', label: 'Administered', d: 'M 750 320 L 950 200',     mx: 850, my: 260 },
       { id: 'w-w', from: 'W', to: 'W', label: 'W2W Transfer', d: 'M 380 70 C 350 -20, 450 -20, 420 70', mx: 400, my: 15, selfLoop: true },
-      // Claims / reimbursement flows (provider -> payer)
-      { id: 'p-payer',   from: 'P',   to: 'Payer', label: 'Rx Claim',    d: 'M 750 80 C 660 230, 575 350, 522 420',  mx: 612, my: 268 },
-      { id: 'c-payer',   from: 'C',   to: 'Payer', label: 'Med Claim',   d: 'M 750 320 Q 615 405 520 425',           mx: 628, my: 392 },
-      { id: 'pat-payer', from: 'Pat', to: 'Payer', label: 'Enrollment',  d: 'M 950 200 C 880 470, 660 475, 528 438', mx: 745, my: 462 },
-      // Payer -> provider coverage / formulary flows (reverse direction).
-      // Run center-to-center (Payer -> node center) so the refX=32 marker insets
-      // the arrowhead to the node edge, like every other edge.
-      { id: 'payer-p', from: 'Payer', to: 'P', label: 'Formulary',  d: 'M 510 430 C 720 360, 800 200, 750 80',  mx: 728, my: 222 },
-      { id: 'payer-c', from: 'Payer', to: 'C', label: 'Coverage',   d: 'M 510 430 C 640 440, 730 410, 750 320', mx: 690, my: 408 },
+      // Claims / payer flows are curves. The strokeWidth-scaled marker draws the
+      // arrowhead as a STRAIGHT triangle ~29-53 user units upstream of the endpoint
+      // along the endpoint tangent, so the path must be straight over that band or
+      // the arrowhead floats off the curve. Each curve therefore ends in a straight
+      // 70-unit tail into the target center (`L`), with the cubic's exit tangent
+      // matched to the tail (C1, no kink) so the whole arrowhead lies on the line.
+      { id: 'p-payer',   from: 'P',   to: 'Payer', label: 'Rx Claim',    d: 'M 750 80 C 660 210, 584 323, 550 372 L 510 430',  mx: 612, my: 268 },
+      { id: 'c-payer',   from: 'C',   to: 'Payer', label: 'Med Claim',   d: 'M 750 320 C 660 360, 628 376, 574 401 L 510 430', mx: 628, my: 392 },
+      { id: 'pat-payer', from: 'Pat', to: 'Payer', label: 'Enrollment',  d: 'M 950 200 C 840 470, 638 407, 579 418 L 510 430', mx: 745, my: 462 },
+      { id: 'payer-p', from: 'Payer', to: 'P', label: 'Formulary',  d: 'M 510 430 C 640 340, 750 210, 750 150 L 750 80',  mx: 728, my: 222 },
+      { id: 'payer-c', from: 'Payer', to: 'C', label: 'Coverage',   d: 'M 510 430 C 560 430, 646 398, 694 362 L 750 320', mx: 690, my: 408 },
     ];
 
     const TYPE_COLOR = { prescription: '#2563eb', sales: '#d97706', claims: '#e11d48', payer: '#0d9488' };
