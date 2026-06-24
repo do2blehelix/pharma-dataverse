@@ -136,12 +136,13 @@
     const VENDOR = {
       id: 'vendor', tab: 'Vendor-Supplied',
       subtitle: 'Third-party datasets bought from data vendors.',
-      typeColor: { prescription: '#2563eb', sales: '#d97706', claims: '#e11d48', payer: '#0d9488' },
+      typeColor: { prescription: '#2563eb', sales: '#d97706', claims: '#e11d48', payer: '#0d9488', clinical: '#059669' },
       legend: [
         { color: '#2563eb', label: 'Prescription (demand)' },
         { color: '#d97706', label: 'Sales (supply)' },
         { color: '#e11d48', label: 'Claims (adjudication)' },
         { color: '#0d9488', label: 'Payer / access (formulary)' },
+        { color: '#059669', label: 'Clinical / EHR (Dx, labs, vitals)' },
         { color: '#dc2626', label: 'Not captured / blind spot', dashed: true },
       ],
       nodes: {
@@ -161,6 +162,7 @@
         { id: 'p-pat', from: 'P', to: 'Pat', label: 'Dispensed',    d: 'M 750 80 L 950 200',      mx: 850, my: 140 },
         { id: 'c-pat', from: 'C', to: 'Pat', label: 'Administered', d: 'M 750 320 L 950 200',     mx: 850, my: 260 },
         { id: 'w-w', from: 'W', to: 'W', label: 'W2W Transfer', d: 'M 380 70 C 350 -20, 450 -20, 420 70', mx: 400, my: 15, selfLoop: true },
+        { id: 'c-ehr', from: 'C', to: 'C', label: 'Dx / Labs', d: 'M 750 320 C 905 268, 905 372, 750 320', mx: 858, my: 320, selfLoop: true },
         { id: 'p-payer',   from: 'P',   to: 'Payer', label: 'Rx Claim',    d: 'M 750 80 C 660 230, 575 350, 522 420',  mx: 612, my: 268 },
         { id: 'c-payer',   from: 'C',   to: 'Payer', label: 'Med Claim',   d: 'M 750 320 Q 615 405 520 425',           mx: 628, my: 392 },
         { id: 'pat-payer', from: 'Pat', to: 'Payer', label: 'Enrollment',  d: 'M 950 200 C 880 470, 660 475, 528 438', mx: 745, my: 462 },
@@ -179,12 +181,16 @@
         apld:     { id: 'apld',     name: 'APLD',     type: 'claims', edges: ['p-pat', 'c-pat', 'p-payer', 'c-payer', 'pat-payer'] },
         mmit:     { id: 'mmit',     name: 'MMIT',     type: 'payer', edges: ['payer-p', 'payer-c'] },
         formulary:{ id: 'formulary',name: 'Formulary',type: 'payer', edges: ['payer-p'] },
+        ambemr:   { id: 'ambemr',   name: 'Ambulatory EMR', type: 'clinical', edges: ['c-ehr', 'c-pat'], missed: ['p-pat'] },
+        hospehr:  { id: 'hospehr',  name: 'Hospital EHR',   type: 'clinical', edges: ['c-ehr', 'c-pat'], missed: ['p-pat'] },
+        labs:     { id: 'labs',     name: 'Labs (LOINC)',   type: 'clinical', edges: ['c-ehr'] },
       },
       btnGroups: [
-        { label: 'Prescription Data', accent: 'blue',  ids: ['xponent', 'plantrak', 'npa'] },
-        { label: 'Sales Data',        accent: 'amber', ids: ['ddd', 'nsp', 'edi867'] },
-        { label: 'Claims Data',       accent: 'rose',  ids: ['lrx', 'dx', 'apld'] },
-        { label: 'Payer Data',        accent: 'teal',  ids: ['mmit', 'formulary'] },
+        { label: 'Prescription Data', accent: 'blue',    ids: ['xponent', 'plantrak', 'npa'] },
+        { label: 'Sales Data',        accent: 'amber',   ids: ['ddd', 'nsp', 'edi867'] },
+        { label: 'Claims Data',       accent: 'rose',    ids: ['lrx', 'dx', 'apld'] },
+        { label: 'Payer Data',        accent: 'teal',    ids: ['mmit', 'formulary'] },
+        { label: 'Clinical / EHR',    accent: 'emerald', ids: ['ambemr', 'hospehr', 'labs'] },
       ],
       hierarchyTitle: 'Pharma Secondary Data',
       branches: [
@@ -204,6 +210,10 @@
           chips: ['MMIT', 'Formulary'],
           desc: '<b>Formulary</b> & <b>coverage</b> position by plan &mdash; tier, restrictions (PA, step edits) & access. <b>MMIT</b> spans retail (pharmacy) & medical (clinic) benefit; links lives reimbursement to the <b>payer/PBM</b> decision driving it.',
           note: { tone: 'teal', items: ['Access / control status, not transaction volume.', 'Plan-level &mdash; pair with claims for patient detail.', 'Drives market access & pull-through analysis.'] } },
+        { accent: 'emerald', title: 'Clinical / EHR', tag: 'Diagnosis & outcomes', sub: 'Clinical detail recorded at the point of care',
+          chips: ['Ambulatory EMR', 'Hospital EHR', 'Labs (LOINC)'],
+          desc: 'De-identified <b>EHR / EMR</b> records from provider systems &mdash; <b>diagnoses</b>, <b>labs</b>, vitals, clinical notes & orders at the <u>Clinic / Hospital</u>. Captures the clinical <i>why</i> behind treatment that claims & Rx data miss. <b>Labs (LOINC)</b> adds quantitative results (e.g. biomarkers, A1c).',
+          note: { tone: 'slate', items: ['Sees the order & diagnosis &mdash; not the pharmacy fill or payer adjudication.', 'Coverage skewed to integrated health systems.', 'Enables biomarker, staging & clinical-outcome analysis.'] } },
       ],
     };
 
@@ -662,7 +672,7 @@
               </div>
               <div className="w-px h-6 bg-slate-300" />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
+              <div className={`grid grid-cols-1 md:grid-cols-2 ${def.branches.length > 4 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-5 w-full`}>
                 {def.branches.map(b => <Branch key={b.title} {...b} />)}
               </div>
             </div>
